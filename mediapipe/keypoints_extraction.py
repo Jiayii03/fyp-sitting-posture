@@ -5,6 +5,7 @@ It loops through all classes in the raw dataset directory (datasets/raw) and pro
 It saves the keypoints into a CSV file (datasets/vectors/pose_vectors.csv) and visualizes them on the images (datasets/keypoints and datasets/keypoints_only).
 
 In this script, all keypoints are extracted and saved.
+run python keypoints_extraction.py
 """
 
 import cv2
@@ -25,7 +26,7 @@ for directory in [keypoints_dir, keypoints_only_dir, vectors_dir]:
         os.makedirs(directory)
 
 def save_keypoints_to_csv(keypoints, class_name, image_id, vectors_dir):
-    csv_path = os.path.join(vectors_dir, "pose_vectors.csv")
+    csv_path = os.path.join(vectors_dir, "all_keypoints_vectors.csv")
     
     # Flatten the keypoints array
     flattened = keypoints.flatten()
