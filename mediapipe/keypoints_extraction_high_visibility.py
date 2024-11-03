@@ -90,7 +90,7 @@ args = parser.parse_args()
 
 # Test image path - modified to use command line arguments
 test_image_path = os.path.join(raw_dir, args.class_name, args.image_name)
-output_csv = os.path.join(vectors_dir, "filtered_keypoints_vectors_low_visibility.csv")
+output_csv = os.path.join(vectors_dir, "filtered_keypoints_vectors_mediapipe.csv")
 
 # Verify that the image exists
 if not os.path.exists(test_image_path):

@@ -85,7 +85,7 @@ needed_landmarks = [
 class_dirs = [d for d in os.listdir(raw_dir) if os.path.isdir(os.path.join(raw_dir, d))]
 
 # Output CSV path
-output_csv = os.path.join(vectors_dir, "filtered_keypoints_vectors_low_visibility.csv")
+output_csv = os.path.join(vectors_dir, "filtered_keypoints_vectors_mediapipe.csv")
 
 # Process each class directory
 for class_name in class_dirs:
