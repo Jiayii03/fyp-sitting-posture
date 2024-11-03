@@ -4,6 +4,7 @@ This script extracts keypoints from images using MediaPipe Pose.
 It filters out the "junk" and "crowded" classes and saves the keypoints into a CSV file (datasets/vectors/filtered_keypoints_vectors.csv).
 
 It ignores non-essential keypoints and only extracts the ones that are needed (nose, shoulders, elbows, hips, knees, ankles, and shoulder midpoint).
+It does not filter out low confidence keypoints.
 
 run python keypoints_extraction_filter.py
 """

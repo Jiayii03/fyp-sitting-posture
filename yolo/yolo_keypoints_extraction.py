@@ -2,6 +2,8 @@
 """
 This script tests YOLOv8 pose estimation on a single image.
 It extracts only specific keypoints (nose, shoulders, hips, knees, ankles, and shoulder midpoint).
+It also creates two images with the keypoints drawn on them: one with a white background and one with a black background.
+It only saves high confidence keypoints (visibility > 0.65).
 Save the keypoints to a CSV file.
 
 run python keypoints_extraction_test.py class_name image_name
@@ -13,6 +15,7 @@ from ultralytics import YOLO
 import argparse
 import os
 import pandas as pd
+import time  # Add this import
 
 # Directory paths
 raw_dir = "C:/Users/User/Documents/UNM_CSAI/UNM_current_modules/COMP3025_Individual_Dissertation/dev/datasets/raw"
@@ -63,7 +66,14 @@ parser.add_argument('image_name', type=str, help='Name of the image file (e.g., 
 args = parser.parse_args()
 
 # Load YOLOv8 model
-model = YOLO('yolov8n-pose.pt')
+'''
+yolov8n-pose.pt (fastest, least accurate)
+yolov8s-pose.pt
+yolov8m-pose.pt
+yolov8l-pose.pt
+yolov8x-pose.pt (slowest, most accurate)
+'''
+model = YOLO('yolov8s-pose.pt')
 
 # Test image path
 test_image_path = os.path.join(raw_dir, args.class_name, args.image_name)
@@ -78,12 +88,19 @@ if not os.path.exists(test_image_path):
 image = cv2.imread(test_image_path)
 image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
-# Run inference
+# Time the inference
+start_time = time.time()
 results = model(image_rgb)
+end_time = time.time()
+inference_time = (end_time - start_time) * 1000  # Convert to milliseconds
+print(f"Inference time: {inference_time:.2f} ms")
 
 # Process results
 for result in results:
     if result.keypoints is not None:
+        # Time the post-processing
+        post_start_time = time.time()
+        
         # Get keypoints
         all_keypoints = result.keypoints.data[0].cpu().numpy()
         

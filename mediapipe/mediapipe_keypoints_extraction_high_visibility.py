@@ -14,6 +14,7 @@ import numpy as np
 import os
 import pandas as pd
 import argparse
+import time
 
 # Directory paths
 raw_dir = "C:/Users/User/Documents/UNM_CSAI/UNM_current_modules/COMP3025_Individual_Dissertation/dev/datasets/raw"
@@ -100,9 +101,18 @@ if not os.path.exists(test_image_path):
 # Read and process image
 image = cv2.imread(test_image_path)
 image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+
+# Time the inference
+start_time = time.time()
 results = pose.process(image_rgb)
+end_time = time.time()
+inference_time = (end_time - start_time) * 1000  # Convert to milliseconds
+print(f"Inference time: {inference_time:.2f} ms")
 
 if results.pose_landmarks:
+    # Time the post-processing (keypoint extraction and visualization)
+    post_start_time = time.time()
+    
     # Extract keypoints
     keypoints = []
     landmarks = results.pose_landmarks.landmark
