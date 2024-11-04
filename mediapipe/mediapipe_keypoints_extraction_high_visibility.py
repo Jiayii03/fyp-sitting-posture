@@ -24,9 +24,6 @@ vectors_dir = "C:/Users/User/Documents/UNM_CSAI/UNM_current_modules/COMP3025_Ind
 
 # Function to save keypoints to CSV
 def save_keypoints_to_csv(keypoints, class_name, image_id, output_path):
-    # Flatten the keypoints array and create a single row
-    keypoints_flat = keypoints.flatten()
-    
     # Create a row with class, image_id, and all keypoints
     row_data = {
         'class': class_name,
@@ -47,15 +44,11 @@ def save_keypoints_to_csv(keypoints, class_name, image_id, output_path):
         'shoulder_midpoint'
     ]
     
-    # Add each keypoint component (x, y, z, visibility) to the row
-    for i, value in enumerate(keypoints_flat):
-        point_idx = i // 4  # Which point
-        component_idx = i % 4  # Which component (0=x, 1=y, 2=z, 3=visibility)
-        component_name = ['x', 'y', 'z', 'visibility'][component_idx]
-        
-        point_name = point_names[point_idx]
-        column_name = f'{point_name}_{component_name}'
-        row_data[column_name] = value
+    # Add each keypoint component (x, y) to the row
+    for i, point in enumerate(keypoints):
+        point_name = point_names[i]
+        row_data[f'{point_name}_x'] = point[0]  # x is already normalized
+        row_data[f'{point_name}_y'] = point[1]  # y is already normalized
     
     # Convert to DataFrame
     df = pd.DataFrame([row_data])
@@ -91,7 +84,7 @@ args = parser.parse_args()
 
 # Test image path - modified to use command line arguments
 test_image_path = os.path.join(raw_dir, args.class_name, args.image_name)
-output_csv = os.path.join(vectors_dir, "filtered_keypoints_vectors_mediapipe.csv")
+output_csv = os.path.join(vectors_dir, "xy_filtered_keypoints_vectors_mediapipe.csv")
 
 # Verify that the image exists
 if not os.path.exists(test_image_path):
@@ -123,7 +116,6 @@ if results.pose_landmarks:
     shoulder_midpoint = type('Landmark', (), {
         'x': (left_shoulder.x + right_shoulder.x) / 2,
         'y': (left_shoulder.y + right_shoulder.y) / 2,
-        'z': (left_shoulder.z + right_shoulder.z) / 2,
         'visibility': min(left_shoulder.visibility, right_shoulder.visibility)
     })
     
@@ -131,24 +123,16 @@ if results.pose_landmarks:
     for landmark_enum in needed_landmarks:
         landmark = landmarks[landmark_enum]
         if landmark.visibility < 0.65:
-            keypoints.append([0, 0, 0, 0])  # Set to zero if visibility is low
+            keypoints.append([0, 0])  # Set to zero if visibility is low
         else:
-            x = landmark.x * image.shape[1]
-            y = landmark.y * image.shape[0]
-            z = landmark.z
-            visibility = landmark.visibility
-            keypoints.append([x, y, z, visibility])
+            # MediaPipe already provides normalized coordinates (0-1)
+            keypoints.append([landmark.x, landmark.y])
     
     # Add shoulder midpoint
     if shoulder_midpoint.visibility < 0.65:
-        keypoints.append([0, 0, 0, 0])
+        keypoints.append([0, 0])
     else:
-        keypoints.append([
-            shoulder_midpoint.x * image.shape[1],
-            shoulder_midpoint.y * image.shape[0],
-            shoulder_midpoint.z,
-            shoulder_midpoint.visibility
-        ])
+        keypoints.append([shoulder_midpoint.x, shoulder_midpoint.y])
     
     keypoints = np.array(keypoints)
     
@@ -170,19 +154,22 @@ if results.pose_landmarks:
     
     # Visualize the keypoints on the image
     image_with_keypoints = image.copy()
+    h, w, _ = image.shape  # Get image dimensions
     
     # Draw custom connections
     for connection in custom_connections:
         start_idx, end_idx = connection
         if all(keypoints[start_idx]) and all(keypoints[end_idx]):  # Check if both points are not zero
-            start_point = (int(keypoints[start_idx][0]), int(keypoints[start_idx][1]))
-            end_point = (int(keypoints[end_idx][0]), int(keypoints[end_idx][1]))
+            start_point = (int(keypoints[start_idx][0] * w), int(keypoints[start_idx][1] * h))
+            end_point = (int(keypoints[end_idx][0] * w), int(keypoints[end_idx][1] * h))
             cv2.line(image_with_keypoints, start_point, end_point, (245, 66, 230), 2)
     
     # Draw keypoints
     for point in keypoints:
         if any(point):  # Check if point is not zero
-            cv2.circle(image_with_keypoints, (int(point[0]), int(point[1])), 4, (245, 117, 66), -1)
+            cv2.circle(image_with_keypoints, 
+                      (int(point[0] * w), int(point[1] * h)), 
+                      4, (245, 117, 66), -1)
     
     # Show image with keypoints
     cv2.imshow("Keypoints", image_with_keypoints)
@@ -196,14 +183,16 @@ if results.pose_landmarks:
     for connection in custom_connections:
         start_idx, end_idx = connection
         if all(keypoints[start_idx]) and all(keypoints[end_idx]):  # Check if both points are not zero
-            start_point = (int(keypoints[start_idx][0]), int(keypoints[start_idx][1]))
-            end_point = (int(keypoints[end_idx][0]), int(keypoints[end_idx][1]))
+            start_point = (int(keypoints[start_idx][0] * w), int(keypoints[start_idx][1] * h))
+            end_point = (int(keypoints[end_idx][0] * w), int(keypoints[end_idx][1] * h))
             cv2.line(image_with_keypoints_black_background, start_point, end_point, (255, 255, 255), 2)
     
     # Draw keypoints on black background
     for point in keypoints:
         if any(point):  # Check if point is not zero
-            cv2.circle(image_with_keypoints_black_background, (int(point[0]), int(point[1])), 4, (255, 255, 255), -1)
+            cv2.circle(image_with_keypoints_black_background, 
+                      (int(point[0] * w), int(point[1] * h)), 
+                      4, (255, 255, 255), -1)
     
     # show image with keypoints on black background
     cv2.imshow("Keypoints on Black Background", image_with_keypoints_black_background)

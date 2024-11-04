@@ -22,9 +22,6 @@ vectors_dir = "C:/Users/User/Documents/UNM_CSAI/UNM_current_modules/COMP3025_Ind
 
 # Function to save keypoints to CSV
 def save_keypoints_to_csv(keypoints, class_name, image_id, output_path):
-    # Flatten the keypoints array and create a single row
-    keypoints_flat = keypoints.flatten()
-    
     # Create a row with class, image_id, and all keypoints
     row_data = {
         'class': class_name,
@@ -45,20 +42,15 @@ def save_keypoints_to_csv(keypoints, class_name, image_id, output_path):
         'shoulder_midpoint'
     ]
     
-    # Add each keypoint component (x, y, z, visibility) to the row
-    for i, value in enumerate(keypoints_flat):
-        point_idx = i // 4  # Which point
-        component_idx = i % 4  # Which component (0=x, 1=y, 2=z, 3=visibility)
-        component_name = ['x', 'y', 'z', 'visibility'][component_idx]
-        
-        point_name = point_names[point_idx]
-        column_name = f'{point_name}_{component_name}'
-        row_data[column_name] = value
+    # Add each keypoint component (x, y) to the row
+    for i, point in enumerate(keypoints):
+        point_name = point_names[i]
+        row_data[f'{point_name}_x'] = point[0]  # x is already normalized
+        row_data[f'{point_name}_y'] = point[1]  # y is already normalized
     
     # Convert to DataFrame
     df = pd.DataFrame([row_data])
     
-    # Append to CSV if it exists, create new if it doesn't
     if os.path.exists(output_path):
         df.to_csv(output_path, mode='a', header=False, index=False)
     else:
@@ -85,7 +77,7 @@ needed_landmarks = [
 class_dirs = [d for d in os.listdir(raw_dir) if os.path.isdir(os.path.join(raw_dir, d))]
 
 # Output CSV path
-output_csv = os.path.join(vectors_dir, "filtered_keypoints_vectors_mediapipe.csv")
+output_csv = os.path.join(vectors_dir, "xy_filtered_keypoints_vectors_mediapipe.csv")
 
 # Process each class directory
 for class_name in class_dirs:
@@ -126,7 +118,6 @@ for class_name in class_dirs:
             shoulder_midpoint = type('Landmark', (), {
                 'x': (left_shoulder.x + right_shoulder.x) / 2,
                 'y': (left_shoulder.y + right_shoulder.y) / 2,
-                'z': (left_shoulder.z + right_shoulder.z) / 2,
                 'visibility': min(left_shoulder.visibility, right_shoulder.visibility)
             })
             
@@ -134,24 +125,16 @@ for class_name in class_dirs:
             for landmark_enum in needed_landmarks:
                 landmark = landmarks[landmark_enum]
                 if landmark.visibility < 0.65:  # Higher threshold for visibility
-                    keypoints.append([0, 0, 0, 0])
+                    keypoints.append([0, 0])  # Only x, y coordinates
                 else:
-                    x = landmark.x * image.shape[1]
-                    y = landmark.y * image.shape[0]
-                    z = landmark.z
-                    visibility = landmark.visibility
-                    keypoints.append([x, y, z, visibility])
+                    # Use normalized coordinates directly
+                    keypoints.append([landmark.x, landmark.y])
             
             # Add shoulder midpoint with visibility check
             if shoulder_midpoint.visibility < 0.65:
-                keypoints.append([0, 0, 0, 0])
+                keypoints.append([0, 0])
             else:
-                keypoints.append([
-                    shoulder_midpoint.x * image.shape[1],
-                    shoulder_midpoint.y * image.shape[0],
-                    shoulder_midpoint.z,
-                    shoulder_midpoint.visibility
-                ])
+                keypoints.append([shoulder_midpoint.x, shoulder_midpoint.y])
             
             keypoints = np.array(keypoints)
             
@@ -171,24 +154,39 @@ for class_name in class_dirs:
                 (6, 8),   # Right knee to right ankle
             ]
             
-            # Save images with keypoints
+            # Create visualization images
+            h, w, _ = image.shape
             image_with_keypoints = image.copy()
-            image_with_keypoints_black_background = np.zeros((image.shape[0], image.shape[1], 3), dtype=np.uint8)
+            image_with_keypoints_black_background = np.zeros((h, w, 3), dtype=np.uint8)
             
-            # Draw connections and keypoints
+            # Draw connections
             for connection in custom_connections:
                 start_idx, end_idx = connection
                 if all(keypoints[start_idx]) and all(keypoints[end_idx]):  # Check if both points are visible
-                    start_point = (int(keypoints[start_idx][0]), int(keypoints[start_idx][1]))
-                    end_point = (int(keypoints[end_idx][0]), int(keypoints[end_idx][1]))
+                    # Convert normalized coordinates to pixel coordinates
+                    start_point = (
+                        int(keypoints[start_idx][0] * w), 
+                        int(keypoints[start_idx][1] * h)
+                    )
+                    end_point = (
+                        int(keypoints[end_idx][0] * w), 
+                        int(keypoints[end_idx][1] * h)
+                    )
+                    
+                    # Draw lines on both images
                     cv2.line(image_with_keypoints, start_point, end_point, (245, 66, 230), 2)
                     cv2.line(image_with_keypoints_black_background, start_point, end_point, (255, 255, 255), 2)
             
             # Draw keypoints
             for point in keypoints:
                 if any(point):  # Check if point is not zero
-                    cv2.circle(image_with_keypoints, (int(point[0]), int(point[1])), 4, (245, 117, 66), -1)
-                    cv2.circle(image_with_keypoints_black_background, (int(point[0]), int(point[1])), 4, (255, 255, 255), -1)
+                    # Convert normalized coordinates to pixel coordinates
+                    point_px = (
+                        int(point[0] * w),
+                        int(point[1] * h)
+                    )
+                    cv2.circle(image_with_keypoints, point_px, 4, (245, 117, 66), -1)
+                    cv2.circle(image_with_keypoints_black_background, point_px, 4, (255, 255, 255), -1)
             
             # Save the images
             save_path = os.path.join(keypoints_dir, class_name, f"{image_id}.jpg")
