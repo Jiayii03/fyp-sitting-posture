@@ -5,7 +5,10 @@ It removes faces and elbows and only extracts the ones that are needed (nose, sh
 It also removes keypoints with low visibility (visibility < 0.65).
 Save the keypoints to a CSV file.
 
-run python keypoints_extraction_low_visibility.py
+run python mediapipe_loop_keypoints_extraction_high_visibility.py 
+
+if you want to use augmented data, run 
+python mediapipe_loop_keypoints_extraction_high_visibility.py --augmented
 """
 
 import cv2
@@ -14,11 +17,23 @@ import numpy as np
 import os
 import pandas as pd
 
+# set up a flag to use augmented data using argparse
+import argparse
+parser = argparse.ArgumentParser(description="Process some integers.")
+parser.add_argument('--augmented', action='store_true', help='use augmented data')
+args = parser.parse_args()
+
 # Directory paths
 raw_dir = "C:/Users/User/Documents/UNM_CSAI/UNM_current_modules/COMP3025_Individual_Dissertation/dev/datasets/raw"
+augmented_dir = "C:/Users/User/Documents/UNM_CSAI/UNM_current_modules/COMP3025_Individual_Dissertation/dev/datasets/augmented"
 keypoints_dir = "C:/Users/User/Documents/UNM_CSAI/UNM_current_modules/COMP3025_Individual_Dissertation/dev/datasets/keypoints/mediapipe"
 keypoints_only_dir = "C:/Users/User/Documents/UNM_CSAI/UNM_current_modules/COMP3025_Individual_Dissertation/dev/datasets/keypoints_only/mediapipe"
 vectors_dir = "C:/Users/User/Documents/UNM_CSAI/UNM_current_modules/COMP3025_Individual_Dissertation/dev/datasets/vectors"
+
+if args.augmented:
+    raw_dir = augmented_dir
+else:
+    raw_dir = raw_dir   
 
 # Function to save keypoints to CSV
 def save_keypoints_to_csv(keypoints, class_name, image_id, output_path):
@@ -77,7 +92,7 @@ needed_landmarks = [
 class_dirs = [d for d in os.listdir(raw_dir) if os.path.isdir(os.path.join(raw_dir, d))]
 
 # Output CSV path
-output_csv = os.path.join(vectors_dir, "xy_filtered_keypoints_vectors_mediapipe.csv")
+output_csv = os.path.join(vectors_dir, "augmented_xy_filtered_keypoints_vectors_mediapipe.csv")
 
 # Process each class directory
 for class_name in class_dirs:

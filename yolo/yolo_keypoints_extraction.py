@@ -73,7 +73,7 @@ yolov8m-pose.pt
 yolov8l-pose.pt
 yolov8x-pose.pt (slowest, most accurate)
 '''
-model = YOLO('yolov8s-pose.pt')
+model = YOLO('models/yolov8x-pose.pt')
 
 # Test image path
 test_image_path = os.path.join(raw_dir, args.class_name, args.image_name)

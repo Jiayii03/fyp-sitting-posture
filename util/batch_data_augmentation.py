@@ -10,43 +10,21 @@ def create_augmenter():
     """Create an augmentation pipeline"""
     transform = A.Compose([
         A.HorizontalFlip(p=0.5),  # Apply horizontal flip with a 50% chance
-        A.Rotate(limit=15, p=0.5),  # Apply rotation with a 50% chance
-        A.ShiftScaleRotate(shift_limit=0.1, scale_limit=0, rotate_limit=0, p=0.5),  # Apply shift only, 50% chance
+        A.Rotate(limit=20, p=0.5),  # Apply rotation with a 50% chance
+        A.ShiftScaleRotate(shift_limit=0.20, scale_limit=0, rotate_limit=0, p=0.5),  # Apply shift only, 50% chance
     ])
     return transform
 
-def get_next_image_number(output_dir):
-    """Get the next available image number in the output directory"""
-    existing_files = list(output_dir.glob("*.jpg"))  # Adjust if using different extensions
-    if not existing_files:
-        return 1
-    
-    # Extract numbers from existing filenames and find the maximum
-    numbers = []
-    for file in existing_files:
-        try:
-            num = int(file.stem)
-            numbers.append(num)
-        except ValueError:
-            continue
-    
-    return max(numbers) + 1 if numbers else 1
-
-def process_image(image_path, output_dir, transform, max_augmentations=3):
+def process_image(image_path, output_dir, transform, counter, max_augmentations=3):
     """Process a single image and save its augmented versions"""
     # Read image
     image = cv2.imread(str(image_path))
     if image is None:
         print(f"Failed to read image: {image_path}")
-        return
+        return counter
     
     # Create output directory if it doesn't exist
     output_dir.mkdir(parents=True, exist_ok=True)
-    
-    # Get the next available number for naming
-    next_num = get_next_image_number(output_dir)
-
-    next_num += 1
     
     # Randomize the number of augmentations for this image
     num_augmentations = random.randint(1, max_augmentations)
@@ -57,9 +35,11 @@ def process_image(image_path, output_dir, transform, max_augmentations=3):
         augmented_image = augmented['image']
         
         # Save augmented image with sequential numbering
-        aug_output_path = output_dir / f"{next_num:03d}.jpg"
+        aug_output_path = output_dir / f"{counter:03d}.jpg"
         cv2.imwrite(str(aug_output_path), augmented_image)
-        next_num += 1
+        counter += 1
+    
+    return counter
 
 def process_directory(input_dir, output_base_dir, max_augmentations=3):
     """Process all images in all class directories"""
@@ -72,8 +52,8 @@ def process_directory(input_dir, output_base_dir, max_augmentations=3):
     
     # Process each class directory
     for class_dir in input_dir.iterdir():
+        counter = 1
         if class_dir.is_dir():
-
             # skip directory 'crowded' and 'junk'
             if class_dir.name in ['crowded', 'junk']:
                 continue
@@ -89,7 +69,7 @@ def process_directory(input_dir, output_base_dir, max_augmentations=3):
             for ext in image_extensions:
                 for image_path in class_dir.glob(f"*{ext}"):
                     print(f"Processing image: {image_path.name}")
-                    process_image(image_path, output_dir, transform, max_augmentations)
+                    counter = process_image(image_path, output_dir, transform, counter, max_augmentations)
                     image_count += 1
             
             print(f"Processed {image_count} images in {class_dir.name}")

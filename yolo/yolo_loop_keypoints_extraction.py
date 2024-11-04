@@ -65,7 +65,7 @@ yolov8m-pose.pt
 yolov8l-pose.pt
 yolov8x-pose.pt (slowest, most accurate)
 '''
-model = YOLO('yolov8s-pose.pt')
+model = YOLO('models/yolov8s-pose.pt')
 
 # Get all class directories
 class_dirs = [d for d in os.listdir(raw_dir) if os.path.isdir(os.path.join(raw_dir, d))]
