@@ -1,3 +1,13 @@
+"""
+This script applies random augmentations to all images in the input directory and saves the augmented versions to the output directory.
+
+The augmentation pipeline includes horizontal flip, rotation, and shift. The number of augmentations for each image is randomized between 1 and a specified maximum.
+The maximum number of augmentations can be adjusted by changing the max_augmentations variable.
+
+Change the input and output directories to process images from a different directory.
+run python batch_data_augmentation.py
+"""
+
 import albumentations as A
 import cv2
 import os

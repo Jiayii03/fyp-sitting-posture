@@ -5,10 +5,13 @@ It removes faces and elbows and only extracts the ones that are needed (nose, sh
 It also removes keypoints with low visibility (visibility < 0.65).
 Save the keypoints to a CSV file.
 
-run python mediapipe_loop_keypoints_extraction_high_visibility.py 
+Before running this script, make sure to delete the existing keypoints CSV file, and all directories in datasets/keypoints and datasets/keypoints_only.
 
 if you want to use augmented data, run 
 python mediapipe_loop_keypoints_extraction_high_visibility.py --augmented
+
+else,
+python mediapipe_loop_keypoints_extraction_high_visibility.py
 """
 
 import cv2
@@ -29,6 +32,7 @@ augmented_dir = "C:/Users/User/Documents/UNM_CSAI/UNM_current_modules/COMP3025_I
 keypoints_dir = "C:/Users/User/Documents/UNM_CSAI/UNM_current_modules/COMP3025_Individual_Dissertation/dev/datasets/keypoints/mediapipe"
 keypoints_only_dir = "C:/Users/User/Documents/UNM_CSAI/UNM_current_modules/COMP3025_Individual_Dissertation/dev/datasets/keypoints_only/mediapipe"
 vectors_dir = "C:/Users/User/Documents/UNM_CSAI/UNM_current_modules/COMP3025_Individual_Dissertation/dev/datasets/vectors"
+output_csv = os.path.join(vectors_dir, "augmented_xy_filtered_keypoints_vectors_mediapipe.csv")
 
 if args.augmented:
     raw_dir = augmented_dir
@@ -36,13 +40,7 @@ else:
     raw_dir = raw_dir   
 
 # Function to save keypoints to CSV
-def save_keypoints_to_csv(keypoints, class_name, image_id, output_path):
-    # Create a row with class, image_id, and all keypoints
-    row_data = {
-        'class': class_name,
-        'image_id': image_id,
-    }
-    
+def save_keypoints_to_csv(keypoints, class_name, output_path):
     # List of point names in order
     point_names = [
         'nose',
@@ -56,16 +54,21 @@ def save_keypoints_to_csv(keypoints, class_name, image_id, output_path):
         'right_ankle',
         'shoulder_midpoint'
     ]
-    
-    # Add each keypoint component (x, y) to the row
+
+    # Create a row with all keypoints
+    row_data = {}
     for i, point in enumerate(keypoints):
         point_name = point_names[i]
         row_data[f'{point_name}_x'] = point[0]  # x is already normalized
         row_data[f'{point_name}_y'] = point[1]  # y is already normalized
-    
+
+    # Add the class label at the end
+    row_data['class'] = class_name
+
     # Convert to DataFrame
     df = pd.DataFrame([row_data])
-    
+
+    # Write to CSV
     if os.path.exists(output_path):
         df.to_csv(output_path, mode='a', header=False, index=False)
     else:
@@ -90,9 +93,6 @@ needed_landmarks = [
 
 # Get all class directories
 class_dirs = [d for d in os.listdir(raw_dir) if os.path.isdir(os.path.join(raw_dir, d))]
-
-# Output CSV path
-output_csv = os.path.join(vectors_dir, "augmented_xy_filtered_keypoints_vectors_mediapipe.csv")
 
 # Process each class directory
 for class_name in class_dirs:
@@ -154,7 +154,7 @@ for class_name in class_dirs:
             keypoints = np.array(keypoints)
             
             # Save to CSV
-            save_keypoints_to_csv(keypoints, class_name, image_id, output_csv)
+            save_keypoints_to_csv(keypoints, class_name, output_csv)
 
             # Create custom connections including the new shoulder midpoint
             custom_connections = [

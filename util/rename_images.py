@@ -1,20 +1,36 @@
 """
 This script renames the images of all classes in the raw directory to a sequential number.  
 
+--augmented flag: use augmented data (optional)
+--class_name: name of the class directory (e.g., crossed_legs, proper, reclining, slouching)
+
 To run the script, use the following command:
-python rename_images.py <class_name>
+python rename_images.py --augmented <class_name>
+
 """
 
 import os
 import argparse
 import shutil
 
-raw_dir = "C:/Users/User/Documents/UNM_CSAI/UNM_current_modules/COMP3025_Individual_Dissertation/dev/datasets/raw"
-
-# add argument parser to get the specific class directory
-parser = argparse.ArgumentParser(description='Rename images in a specific class directory')
+# use argparse to get the raw and augmented directories
+parser = argparse.ArgumentParser(description="Rename images in a specific class directory")
+parser.add_argument('--augmented', action='store_true', help='Use augmented data')
 parser.add_argument('class_name', type=str, help='Name of the class directory (e.g., crossed_legs, proper, reclining, slouching)')
 args = parser.parse_args()
+
+# Set directories based on --augmented flag
+raw_dir = "C:/Users/User/Documents/UNM_CSAI/UNM_current_modules/COMP3025_Individual_Dissertation/dev/datasets/raw"
+augmented_dir = "C:/Users/User/Documents/UNM_CSAI/UNM_current_modules/COMP3025_Individual_Dissertation/dev/datasets/augmented"
+
+if args.augmented:
+    raw_dir = augmented_dir
+else:
+    raw_dir = raw_dir
+
+# Access the specific class directory
+class_dir = os.path.join(raw_dir, args.class_name)
+print(f"Using directory: {class_dir}")  
 
 # Get all class directories
 class_dirs = [d for d in os.listdir(raw_dir) if os.path.isdir(os.path.join(raw_dir, d))]

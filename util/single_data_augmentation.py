@@ -1,3 +1,10 @@
+'''
+This script contains a function to create a random augmenter to apply random augmentations to a single image.
+
+Change the input directory and image path variable to test the augmentation on a different image.
+run python single_data_augmentation.py
+'''
+
 import albumentations as A
 import cv2
 import os
@@ -35,7 +42,7 @@ def test_random_augmentation():
     input_directory = "C:/Users/User/Documents/UNM_CSAI/UNM_current_modules/COMP3025_Individual_Dissertation/dev/datasets/raw/proper"
     
     # Get first image
-    image_path = None
+    image_path = "001.jpg"
     for ext in ['*.jpg', '*.png', '*.jpeg', '*.webp']:
         try:
             image_path = next(Path(input_directory).glob(ext))
