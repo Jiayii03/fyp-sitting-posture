@@ -19,11 +19,3 @@ class MLP(nn.Module):
 
     def forward(self, x):
         return self.model(x)
-    
-'''
-Per-Class Accuracy:
-  crossed_legs: 95.08%
-  proper: 69.57%
-  reclining: 88.46%
-  slouching: 81.13%
-'''
