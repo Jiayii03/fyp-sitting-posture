@@ -14,7 +14,6 @@ Run the script using the following command:
 python pipeline.py --image crossed_legs_1.jpg
 """
 
-
 import sys
 import cv2
 import mediapipe as mp

@@ -1,7 +1,14 @@
 export default function Home() {
   return (
     <div>
-      <h1>Home</h1>
+      <div>
+        <h1>Camera Stream</h1>
+        <img
+          src="http://localhost:5000/video_feed" // URL of the Python backend
+          alt="Camera Stream"
+          style={{ width: "50%", height: "50%" }}
+        />
+      </div>
     </div>
   );
 }
