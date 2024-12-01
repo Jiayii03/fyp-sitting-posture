@@ -11,7 +11,13 @@ The pipeline consists of the following steps:
 Change the `image_path` and `model_path` variables to the paths of your image and saved model, respectively.
 
 Run the script using the following command:
-python pipeline.py --image crossed_legs_1.jpg
+python pipeline.py --image crossed_legs_1.jpg --reclining_sensitivity 0.8
+
+--image: Name of the image file in the images/ directory.
+--reclining_sensitivity: Sensitivity adjustment for the "reclining" class (default: 1.0).
+--crossed_legs_sensitivity: Sensitivity adjustment for the "crossed_legs" class (default: 1.0).
+--proper_sensitivity: Sensitivity adjustment for the "proper" class (default: 1.0).
+--slouching_sensitivity: Sensitivity adjustment for the "slouching" class (default: 1.0).
 """
 
 import sys
@@ -19,6 +25,7 @@ import cv2
 import mediapipe as mp
 import numpy as np
 import torch
+import torch.nn.functional as F
 from sklearn.preprocessing import StandardScaler
 import matplotlib.pyplot as plt
 import argparse
@@ -116,8 +123,22 @@ def extract_keypoints(image_path, pose_model, visibility_threshold=0.65):
     return keypoints.flatten(), image
 
 
-# Function for model inference
-def predict_posture(model, keypoints, scaler, class_labels):
+def predict_posture(model, keypoints, scaler, class_labels, sensitivity_adjustments=None):
+    """
+    Perform inference with sensitivity adjustments for specific classes.
+
+    Args:
+    - model: Trained PyTorch model.
+    - keypoints: Keypoints extracted from the image.
+    - scaler: StandardScaler used for normalization.
+    - class_labels: List of class labels.
+    - sensitivity_adjustments: Dictionary of class sensitivities (e.g., {'reclining': 0.8}).
+
+    Returns:
+    - predicted_label: Predicted class label.
+    - confidence_scores: Dictionary of confidence scores for each class.
+    """
+    # Normalize keypoints
     keypoints_normalized = scaler.transform([keypoints])  # StandardScaler expects 2D array
 
     # Convert to PyTorch tensor
@@ -127,17 +148,33 @@ def predict_posture(model, keypoints, scaler, class_labels):
     model.eval()
     with torch.no_grad():
         outputs = model(input_tensor)
-        _, predicted = torch.max(outputs, 1)
+        probabilities = F.softmax(outputs, dim=1)  # Compute softmax to get probabilities
 
-    # Map predicted index to class label
-    return class_labels[predicted.item()]
+    # Adjust sensitivities if specified
+    if sensitivity_adjustments:
+        for class_name, adjustment_factor in sensitivity_adjustments.items():
+            class_index = class_labels.index(class_name)
+            probabilities[0, class_index] *= adjustment_factor
 
+        # Re-normalize probabilities after adjustments
+        probabilities /= probabilities.sum(dim=1, keepdim=True)
+
+    # Get the predicted label and confidence scores
+    _, predicted = torch.max(probabilities, 1)
+    predicted_label = class_labels[predicted.item()]
+    confidence_scores = {class_labels[i]: probabilities[0, i].item() for i in range(len(class_labels))}
+
+    return predicted_label, confidence_scores
 
 # Main pipeline
 if __name__ == "__main__":
     # Argument parser for image name
     parser = argparse.ArgumentParser(description="Posture classification pipeline.")
     parser.add_argument("--image", type=str, required=True, help="Name of the image file in the images/ directory.")
+    parser.add_argument("--reclining_sensitivity", type=float, default=1.0, help="Sensitivity adjustment for reclining class.")
+    parser.add_argument("--crossed_legs_sensitivity", type=float, default=1.0, help="Sensitivity adjustment for crossed_legs class.")
+    parser.add_argument("--proper_sensitivity", type=float, default=1.0, help="Sensitivity adjustment for proper class.")
+    parser.add_argument("--slouching_sensitivity", type=float, default=1.0, help="Sensitivity adjustment for slouching class.")
     args = parser.parse_args()
 
     # Paths and configurations
@@ -164,10 +201,29 @@ if __name__ == "__main__":
         scaler = StandardScaler()
         scaler.mean_ = np.load("../models/2024-11-24_16-34-03/scaler_mean.npy")  # Load scaler's mean
         scaler.scale_ = np.load("../models/2024-11-24_16-34-03/scaler_scale.npy")  # Load scaler's scale
+        
+        # OPTIONAL: Adjust sensitivity for specific classes
+        sensitivity_adjustments = {
+            "reclining": 1.0,  # Default sensitivity
+            "crossed_legs": 1.0,
+            "proper": 1.0,
+            "slouching": 1.0
+        }
+        
+        if args.reclining_sensitivity != 1.0:
+            sensitivity_adjustments["reclining"] = args.reclining_sensitivity
+        if args.crossed_legs_sensitivity != 1.0:
+            sensitivity_adjustments["crossed_legs"] = args.crossed_legs_sensitivity
+        if args.proper_sensitivity != 1.0:
+            sensitivity_adjustments["proper"] = args.proper_sensitivity
+        if args.slouching_sensitivity != 1.0:
+            sensitivity_adjustments["slouching"] = args.slouching_sensitivity
     
         # Predict the posture
-        predicted_label = predict_posture(model, keypoints, scaler, class_labels)
+        predicted_label, confidence_scores = predict_posture(model, keypoints, scaler, class_labels, sensitivity_adjustments=sensitivity_adjustments)
         print(f"Predicted posture: {predicted_label}")
+        print(f"Sensitivity adjustments: {sensitivity_adjustments}")
+        print(f"Confidence scores: {confidence_scores}")
 
         # Convert BGR to RGB for Matplotlib
         image_rgb = cv2.cvtColor(image_with_keypoints, cv2.COLOR_BGR2RGB)

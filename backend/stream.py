@@ -3,8 +3,14 @@ This script creates a video stream from the camera and serves it as a web API.
 
 To run this script, execute the following command:
 python stream.py --camera_index 1
+
+API Endpoints:
+- /video_feed: Streams the video feed from the camera. GET request.
+- /capture: Captures a photo from the camera and saves it to disk. GET request.
+- /capture_predict: Captures a photo from the camera, runs sitting posture inference, and returns the predicted posture as a json. POST request.
+
 """
-from flask import Flask, Response, jsonify
+from flask import Flask, Response, jsonify, request
 import cv2
 import sys
 import os
@@ -25,7 +31,7 @@ sys.path.append(project_root)
 
 # Import the MLP class
 from model import MLP
-from inference.pipeline import extract_keypoints
+from inference.pipeline import extract_keypoints, predict_posture
 
 app = Flask(__name__)
 
@@ -37,8 +43,15 @@ args = parser.parse_args()
 # Global camera instance
 camera_lock = threading.Lock()
 camera = cv2.VideoCapture(args.camera_index, cv2.CAP_MSMF)
-camera.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
-camera.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+
+# Try setting a higher resolution
+camera.set(cv2.CAP_PROP_FRAME_WIDTH, 1920)
+camera.set(cv2.CAP_PROP_FRAME_HEIGHT, 1080)
+
+# Check if the camera supports it
+width = int(camera.get(cv2.CAP_PROP_FRAME_WIDTH))
+height = int(camera.get(cv2.CAP_PROP_FRAME_HEIGHT))
+print(f"Attempted resolution: {width}x{height}")
 
 @app.route('/video_feed')
 def video_feed():
@@ -74,24 +87,46 @@ def capture_photo():
     else:
         return jsonify({"error": "Failed to capture photo."}), 500
     
-@app.route('/capture_predict', methods=['GET'])
+@app.route('/capture_predict', methods=['POST'])
 def capture_predict():
-    """Capture a photo and run sitting posture inference."""
+    """
+    Capture a photo and run sitting posture inference with sensitivity adjustments.
+    Accepts sensitivity adjustments exclusively via JSON request body.
+    
+    curl -X POST -H "Content-Type: application/json" -d '{
+    "sensitivity_adjustments": {
+        "reclining": 0.8,
+    }
+    }' "http://localhost:5000/capture_predict"
+    """
+    # Capture a frame from the camera
     with camera_lock:
         success, frame = camera.read()
     if not success:
         return jsonify({"error": "Failed to capture frame."}), 500
+    
+    # Get sensitivity adjustments from JSON body
+    if not request.is_json:
+        return jsonify({"error": "Request body must be JSON."}), 400
+
+    sensitivity_adjustments = request.json.get("sensitivity_adjustments", {})
+    if not isinstance(sensitivity_adjustments, dict):
+        return jsonify({"error": "Invalid sensitivity adjustments format."}), 400
+
+    # Ensure sensitivity adjustments values are floats
+    try:
+        sensitivity_adjustments = {k: float(v) for k, v in sensitivity_adjustments.items()}
+    except ValueError:
+        return jsonify({"error": "Sensitivity adjustments values must be numbers."}), 400
 
     # Save the captured frame temporarily
     image_path = "temp_image.jpg"
     cv2.imwrite(image_path, frame)
 
-    # Load the saved model
+    # Load the saved model and scaler
     model_path = "../models/2024-11-24_16-34-03/epochs_150_lr_1e-03_wd_1e-03_acc_8298.pth"
     scaler_mean_path = "../models/2024-11-24_16-34-03/scaler_mean.npy"
     scaler_scale_path = "../models/2024-11-24_16-34-03/scaler_scale.npy"
-
-    # Define the class labels
     class_labels = ["crossed_legs", "proper", "reclining", "slouching"]
 
     # Load model
@@ -114,16 +149,16 @@ def capture_predict():
         return jsonify({"error": "No pose detected."}), 400
 
     # Predict posture
-    keypoints_normalized = scaler.transform([keypoints])
-    input_tensor = torch.tensor(keypoints_normalized, dtype=torch.float32)
-    with torch.no_grad():
-        outputs = model(input_tensor)
-        _, predicted = torch.max(outputs, 1)
-    predicted_label = class_labels[predicted.item()]
-    
-    print(f"Predicted posture: {predicted_label}")
+    predicted_label, confidence_scores = predict_posture(
+        model, keypoints, scaler, class_labels, sensitivity_adjustments=sensitivity_adjustments
+    )
 
-    return jsonify({"message": "Prediction successful.", "predicted_posture": predicted_label})
+    return jsonify({
+        "message": "Prediction successful.",
+        "sensitivity_adjustments": sensitivity_adjustments,
+        "predicted_posture": predicted_label,
+        "confidence_scores": confidence_scores
+    })
     
 
 if __name__ == '__main__':
