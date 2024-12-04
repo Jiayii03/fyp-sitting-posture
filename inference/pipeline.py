@@ -29,6 +29,7 @@ import torch.nn.functional as F
 from sklearn.preprocessing import StandardScaler
 import matplotlib.pyplot as plt
 import argparse
+import time
 
 # Add the directory to sys.path
 model_dir = "../models/2024-11-24_16-34-03"
@@ -63,9 +64,27 @@ custom_connections = [
     (6, 8),  # Right knee to right ankle
 ]
 
-# Function to extract keypoints from an image
-def extract_keypoints(image_path, pose_model, visibility_threshold=0.65):
-    image = cv2.imread(image_path)
+def extract_keypoints(image_input, pose_model, visibility_threshold=0.65):
+    """
+    Extract keypoints from an image or frame.
+
+    Args:
+    - image_input: Path to the image file or a numpy array (frame).
+    - pose_model: Mediapipe pose model instance.
+    - visibility_threshold: Minimum visibility to consider a keypoint valid.
+
+    Returns:
+    - Flattened keypoints array or None if no keypoints detected.
+    - Processed image with keypoints and connections drawn.
+    """
+    if isinstance(image_input, str):  # Check if it's a file path
+        image = cv2.imread(image_input)
+    else:  # Assume it's already an image (numpy array)
+        image = image_input
+
+    if image is None:
+        raise ValueError("Invalid image input. Ensure the file path or frame is correct.")
+
     image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
     results = pose_model.process(image_rgb)
 
@@ -121,7 +140,6 @@ def extract_keypoints(image_path, pose_model, visibility_threshold=0.65):
             )
 
     return keypoints.flatten(), image
-
 
 def predict_posture(model, keypoints, scaler, class_labels, sensitivity_adjustments=None):
     """
@@ -186,6 +204,9 @@ if __name__ == "__main__":
     # Load Mediapipe pose model
     mp_pose = mp.solutions.pose
     pose = mp_pose.Pose(static_image_mode=True, min_detection_confidence=0.5)
+    
+    # Start timing
+    start_time = time.time()
 
     # Extract keypoints from the image
     keypoints, image_with_keypoints = extract_keypoints(image_path, pose)
@@ -227,6 +248,11 @@ if __name__ == "__main__":
 
         # Convert BGR to RGB for Matplotlib
         image_rgb = cv2.cvtColor(image_with_keypoints, cv2.COLOR_BGR2RGB)
+        
+        # End timing
+        end_time = time.time()
+        elapsed_time = end_time - start_time
+        print(f"Inference pipeline runtime: {elapsed_time:.4f} seconds")
 
         # Display the image using Matplotlib
         plt.imshow(image_rgb)
@@ -235,6 +261,8 @@ if __name__ == "__main__":
         plt.show()
     else:
         print("Pose could not be extracted.")
+        
+    
 
     # Clean up
     pose.close()
