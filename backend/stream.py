@@ -6,9 +6,9 @@ python stream.py --camera_index 1
 
 API Endpoints:
 - /video_feed: Streams the video feed from the camera. GET request.
+- /video_feed_keypoints: Streams the video feed from the camera with keypoints overlay. GET request.
 - /capture: Captures a photo from the camera and saves it to disk. GET request.
 - /capture_predict: Captures a photo from the camera, runs sitting posture inference, and returns the predicted posture as a json. POST request.
-
 """
 from flask import Flask, Response, jsonify, request
 import cv2
@@ -31,7 +31,7 @@ sys.path.append(project_root)
 
 # Import the MLP class
 from model import MLP
-from inference.pipeline import extract_keypoints, predict_posture
+from source.inference.pipeline_multi import extract_keypoints, predict_posture
 
 app = Flask(__name__)
 
@@ -53,6 +53,23 @@ width = int(camera.get(cv2.CAP_PROP_FRAME_WIDTH))
 height = int(camera.get(cv2.CAP_PROP_FRAME_HEIGHT))
 print(f"Attempted resolution: {width}x{height}")
 
+# Load the saved model and scaler
+model_path = "../models/2024-11-24_16-34-03/epochs_150_lr_1e-03_wd_1e-03_acc_8298.pth"
+scaler_mean_path = "../models/2024-11-24_16-34-03/scaler_mean.npy"
+scaler_scale_path = "../models/2024-11-24_16-34-03/scaler_scale.npy"
+class_labels = ["crossed_legs", "proper", "reclining", "slouching"]
+
+# Load model
+input_size = 20  # Update this based on your keypoints input size
+model = MLP(input_size=input_size, num_classes=len(class_labels))
+model.load_state_dict(torch.load(model_path))
+model.eval()
+
+# Load scaler
+scaler = StandardScaler()
+scaler.mean_ = np.load(scaler_mean_path)
+scaler.scale_ = np.load(scaler_scale_path)
+
 @app.route('/video_feed')
 def video_feed():
     """Stream video feed."""
@@ -67,6 +84,42 @@ def video_feed():
             # Convert to byte array
             frame_bytes = buffer.tobytes()
             # Yield the frame as part of a multipart response
+            yield (b'--frame\r\n'
+                   b'Content-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
+
+    return Response(generate(), mimetype='multipart/x-mixed-replace; boundary=frame')
+
+@app.route('/video_feed_keypoints')
+def video_feed_keypoints():
+    """Stream video feed with keypoints overlay and posture classification."""
+    mp_pose = mp.solutions.pose
+    pose = mp_pose.Pose(static_image_mode=False, min_detection_confidence=0.5, min_tracking_confidence=0.5)
+
+    def generate():
+        while True:
+            with camera_lock:
+                success, frame = camera.read()
+            if not success:
+                break
+
+            # Process the frame for keypoints
+            keypoints, frame_with_keypoints = extract_keypoints(frame, pose)
+
+            if keypoints is not None:
+                predicted_label, confidence_scores = predict_posture(model, keypoints, scaler, class_labels)
+
+                # Set color and feedback text
+                color = (0, 255, 0) if predicted_label == "proper" else (0, 0, 255)
+                feedback_text = f"Posture: {predicted_label}"
+
+                # Draw feedback on the frame
+                cv2.putText(frame_with_keypoints, feedback_text, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, color, 2)
+
+            # Encode the frame as JPEG
+            _, buffer = cv2.imencode('.jpg', frame_with_keypoints)
+            frame_bytes = buffer.tobytes()
+
+            # Yield the frame for the video feed
             yield (b'--frame\r\n'
                    b'Content-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
 
@@ -122,24 +175,7 @@ def capture_predict():
     # Save the captured frame temporarily
     image_path = "temp_image.jpg"
     cv2.imwrite(image_path, frame)
-
-    # Load the saved model and scaler
-    model_path = "../models/2024-11-24_16-34-03/epochs_150_lr_1e-03_wd_1e-03_acc_8298.pth"
-    scaler_mean_path = "../models/2024-11-24_16-34-03/scaler_mean.npy"
-    scaler_scale_path = "../models/2024-11-24_16-34-03/scaler_scale.npy"
-    class_labels = ["crossed_legs", "proper", "reclining", "slouching"]
-
-    # Load model
-    input_size = 20  # Update this based on your keypoints input size
-    model = MLP(input_size=input_size, num_classes=len(class_labels))
-    model.load_state_dict(torch.load(model_path))
-    model.eval()
-
-    # Load scaler
-    scaler = StandardScaler()
-    scaler.mean_ = np.load(scaler_mean_path)
-    scaler.scale_ = np.load(scaler_scale_path)
-
+    
     # Extract keypoints
     mp_pose = mp.solutions.pose
     pose = mp_pose.Pose(static_image_mode=True, min_detection_confidence=0.5)
