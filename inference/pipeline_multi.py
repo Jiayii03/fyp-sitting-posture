@@ -15,6 +15,7 @@ Run the script using the following command:
 python pipeline_multi.py --image bq_recline.jpg
 
 --image: Name of the image file in the images/ directory.
+--save: Save the annotated image with the predicted postures.
 --reclining_sensitivity: Sensitivity adjustment for the "reclining" class (default: 1.0).
 --crossed_legs_sensitivity: Sensitivity adjustment for the "crossed_legs" class (default: 1.0).
 --proper_sensitivity: Sensitivity adjustment for the "proper" class (default: 1.0).
@@ -249,6 +250,7 @@ if __name__ == "__main__":
     # Argument parser for image name
     parser = argparse.ArgumentParser(description="Posture classification pipeline.")
     parser.add_argument("--image", type=str, required=True, help="Name of the image file in the images/ directory.")
+    parser.add_argument("--save", action="store_true", help="Save the annotated image with predicted postures.")
     parser.add_argument("--reclining_sensitivity", type=float, default=1.0, help="Sensitivity adjustment for reclining class.")
     parser.add_argument("--crossed_legs_sensitivity", type=float, default=1.0, help="Sensitivity adjustment for crossed_legs class.")
     parser.add_argument("--proper_sensitivity", type=float, default=1.0, help="Sensitivity adjustment for proper class.")
@@ -332,6 +334,14 @@ if __name__ == "__main__":
         resized_image_with_keypoints = cv2.resize(image_with_keypoints, (0, 0), fx=0.8, fy=0.8)
         # Display the image with YOLO bounding boxes and predictions
         cv2.imshow("YOLO Detected Humans With Keypoints and Postures", resized_image_with_keypoints)
+        
+        # Save the annotated image if specified
+        saved_image_dir = "results"
+        if args.save:
+            output_image_path = f"{saved_image_dir}/{args.image}"
+            cv2.imwrite(output_image_path, resized_image_with_keypoints)
+            print(f"Annotated image saved as {output_image_path}")
+            
         cv2.waitKey(0)
         cv2.destroyAllWindows()
     else:
