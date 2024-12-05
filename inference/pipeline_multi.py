@@ -12,7 +12,7 @@ The pipeline consists of the following steps:
 Change the `image_path` and `model_path` variables to the paths of your image and saved model, respectively.
 
 Run the script using the following command:
-python pipeline_multi.py --image crossed_legs_1.jpg --reclining_sensitivity 0.8
+python pipeline_multi.py --image bq_recline.jpg
 
 --image: Name of the image file in the images/ directory.
 --reclining_sensitivity: Sensitivity adjustment for the "reclining" class (default: 1.0).
@@ -65,7 +65,7 @@ custom_connections = [
     (6, 8),  # Right knee to right ankle
 ]
 
-def extract_keypoints_multi_person(image_input, pose_model, yolo_model, confidence_threshold=0.5, visibility_threshold=0.65):
+def extract_keypoints_multi_person(image_input, pose_model, yolo_model, confidence_threshold=0.30, visibility_threshold=0.65):
     """
     Extract keypoints for multiple persons using YOLO for detection and Mediapipe for pose estimation.
 
@@ -97,6 +97,7 @@ def extract_keypoints_multi_person(image_input, pose_model, yolo_model, confiden
 
     keypoints_list = []
     bboxes = []
+    person = 1
     for _, detection in person_detections.iterrows():
         x_min, y_min, x_max, y_max, confidence, class_id, name = detection
 
@@ -109,12 +110,12 @@ def extract_keypoints_multi_person(image_input, pose_model, yolo_model, confiden
             cv2.rectangle(image, (x_min, y_min), (x_max, y_max), (0, 255, 0), 2)
             cv2.putText(
                 image,
-                f"Person: {confidence:.2f}",
+                f"Person {person}: {confidence:.2f}",
                 (x_min, y_min - 10),
                 cv2.FONT_HERSHEY_SIMPLEX,
                 0.7,
                 (0, 255, 0),
-                1
+                2
             )
 
             # Crop the person from the image
@@ -192,9 +193,10 @@ def extract_keypoints_multi_person(image_input, pose_model, yolo_model, confiden
                             (255, 0, 0),
                             2,
                         )
-            
             else:
-                print("No pose landmarks detected for the person.")
+                keypoints_list.append(None)
+                
+            person += 1
 
     return keypoints_list, image, bboxes
 
@@ -298,6 +300,10 @@ if __name__ == "__main__":
 
         # Predict the posture for each person
         for i, (keypoints, bbox) in enumerate(zip(keypoints_list, bboxes)):
+            if keypoints is None or np.isnan(keypoints).any():  # Skip if keypoints are invalid
+                print(f"Person {i + 1} - No valid keypoints detected. Skipping posture prediction.")
+                continue
+    
             predicted_label, confidence_scores = predict_posture(
                 model, keypoints, scaler, class_labels, sensitivity_adjustments=sensitivity_adjustments
             )
@@ -314,7 +320,7 @@ if __name__ == "__main__":
                 cv2.FONT_HERSHEY_SIMPLEX,
                 0.7,
                 (0, 165, 255),
-                1
+                2
             )
 
         # End timing

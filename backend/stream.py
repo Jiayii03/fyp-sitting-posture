@@ -6,7 +6,7 @@ python stream.py --camera_index 1
 
 API Endpoints:
 - /video_feed: Streams the video feed from the camera. GET request.
-- /video_feed_keypoints: Streams the video feed from the camera with keypoints overlay. GET request.
+- /video_feed_keypoints: Streams the video feed from the camera with keypoints overlay and class labels. GET request.
 - /capture: Captures a photo from the camera and saves it to disk. GET request.
 - /capture_predict: Captures a photo from the camera, runs sitting posture inference, and returns the predicted posture as a json. POST request.
 """
@@ -29,9 +29,13 @@ sys.path.append(model_dir)
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../"))
 sys.path.append(project_root)
 
+source_dir = os.path.join(project_root, "source")
+sys.path.append(source_dir)
+
 # Import the MLP class
 from model import MLP
-from source.inference.pipeline_multi import extract_keypoints, predict_posture
+from inference.pipeline import extract_keypoints, predict_posture
+from inference.pipeline_multi import extract_keypoints_multi_person
 
 app = Flask(__name__)
 
@@ -125,6 +129,55 @@ def video_feed_keypoints():
 
     return Response(generate(), mimetype='multipart/x-mixed-replace; boundary=frame')
 
+@app.route('/video_feed_keypoints_multi', methods=['GET'])
+def video_feed_keypoints_multi():
+    """Stream video feed with keypoints overlay and multi-person posture classification."""
+    mp_pose = mp.solutions.pose
+    pose = mp_pose.Pose(static_image_mode=False, min_detection_confidence=0.5, min_tracking_confidence=0.5)
+
+    # Load YOLO model for person detection
+    yolo_model_path = "../models/yolo-human-detection/yolov5n.pt"
+    yolo_model = torch.hub.load('ultralytics/yolov5', 'custom', path=yolo_model_path, force_reload=False)
+    yolo_model.classes = [0]  # Only detect persons (COCO class ID: 0)
+
+    def generate():
+        while True:
+            with camera_lock:
+                success, frame = camera.read()
+            if not success:
+                break
+
+            # Process the frame with YOLO and Mediapipe
+            keypoints_list, frame_with_keypoints, bboxes = extract_keypoints_multi_person(frame, pose, yolo_model)
+
+            if keypoints_list:
+                for i, keypoints in enumerate(keypoints_list):
+                    if keypoints is None or np.isnan(keypoints).any():
+                        continue
+
+                    # Predict posture for each detected person
+                    predicted_label, confidence_scores = predict_posture(model, keypoints, scaler, class_labels)
+
+                    # Get bounding box for the person
+                    x_min, y_min, x_max, y_max = bboxes[i]
+
+                    # Set color and feedback text
+                    color = (0, 255, 0) if predicted_label == "proper" else (0, 0, 255)
+                    feedback_text = f"Person {i + 1}: {predicted_label} ({max(confidence_scores.values()):.2f})"
+
+                    # Draw feedback text on the frame
+                    cv2.putText(frame_with_keypoints, feedback_text, (x_min, y_min - 40),
+                                cv2.FONT_HERSHEY_SIMPLEX, 0.7, color, 2)
+
+            # Encode the frame as JPEG
+            _, buffer = cv2.imencode('.jpg', frame_with_keypoints)
+            frame_bytes = buffer.tobytes()
+
+            # Yield the frame for the video feed
+            yield (b'--frame\r\n'
+                   b'Content-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
+
+    return Response(generate(), mimetype='multipart/x-mixed-replace; boundary=frame')
 
 @app.route('/capture', methods=['GET'])
 def capture_photo():
