@@ -64,7 +64,7 @@ const Sidebar = () => {
   const handleSensitivityChange = (key, value) => {
     setSensitivity({
       ...sensitivity,
-      [key]: parseInt(value)
+      [key]: parseInt(value),
     });
     showUpdateToast();
   };
@@ -80,7 +80,20 @@ const Sidebar = () => {
         onClick={() => setIsOpen((prev) => !prev)}
         className="fixed top-4 left-7 z-50 bg-white text-slate-800 py-1 px-2 rounded focus:outline-none shadow-md"
       >
-        ☰
+        <svg
+          fill="none"
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          viewBox="0 0 24 24"
+          height="20px"
+          width="20px"
+        >
+          <path d="M20 7h-9M14 17H5" />
+          <path d="M20 17 A3 3 0 0 1 17 20 A3 3 0 0 1 14 17 A3 3 0 0 1 20 17 z" />
+          <path d="M10 7 A3 3 0 0 1 7 10 A3 3 0 0 1 4 7 A3 3 0 0 1 10 7 z" />
+        </svg>
       </button>
 
       <div
@@ -100,8 +113,8 @@ const Sidebar = () => {
 
           <div className="mb-4">
             <h3 className="text-sm font-semibold mb-2">Detection Mode</h3>
-            <RadioGroup 
-              value={detectionMode} 
+            <RadioGroup
+              value={detectionMode}
               onChange={(value) => {
                 setDetectionMode(value);
                 showUpdateToast();
@@ -136,8 +149,8 @@ const Sidebar = () => {
 
           <div className="mb-4">
             <h3 className="text-sm font-semibold mb-2">Model Type</h3>
-            <Listbox 
-              value={modelType} 
+            <Listbox
+              value={modelType}
               onChange={(value) => {
                 setModelType(value);
                 showUpdateToast();

@@ -4,11 +4,15 @@ import React, { useState, useEffect } from "react";
 import Sidebar from "../../components/Sidebar";
 import Logging from "../../components/Logging";
 import { Toaster } from "react-hot-toast";
-import { SidebarProvider } from "@/context/SidebarContext";
+import { useSidebarSettings } from "@/context/SidebarContext";
 
 function Page() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isLoggingOpen, setIsLoggingOpen] = useState(true);
+  const [videoFeedURL, setVideoFeedURL] = useState("");
+
+  const { detectionMode, modelType, sensitivity, isAlertEnabled } =
+    useSidebarSettings();
 
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
@@ -18,8 +22,16 @@ function Page() {
     setIsLoggingOpen(!isLoggingOpen);
   };
 
+  useEffect(() => {
+    if (detectionMode === "single") {
+      setVideoFeedURL("http://localhost:5000/video_feed_keypoints");
+    } else {
+      setVideoFeedURL("http://localhost:5000/video_feed_keypoints_multi");
+    }
+  }, [detectionMode]);
+
   return (
-    <SidebarProvider>
+    
       <div className="flex h-screen">
         <Toaster />
         {/* Sidebar */}
@@ -40,6 +52,7 @@ function Page() {
           >
             <img
               // src="http://localhost:5000/video_feed"
+              // src={videoFeedURL}
               alt="Camera Stream"
               className="w-full h-full object-cover"
             />
@@ -49,7 +62,6 @@ function Page() {
         {/* Logging Section */}
         <Logging isOpen={isLoggingOpen} toggleLogging={toggleLogging} />
       </div>
-    </SidebarProvider>
   );
 }
 
