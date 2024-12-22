@@ -7,6 +7,7 @@ python stream.py --camera_index 1
 API Endpoints:
 - /video_feed: Streams the video feed from the camera. GET request.
 - /video_feed_keypoints: Streams the video feed from the camera with keypoints overlay and class labels. GET request.
+- /video_feed_keypoints_multi: Streams the video feed from the camera with keypoints overlay and multi-person class labels. GET request.
 - /capture: Captures a photo from the camera and saves it to disk. GET request.
 - /capture_predict: Captures a photo from the camera, runs sitting posture inference, and returns the predicted posture as a json. POST request.
 """

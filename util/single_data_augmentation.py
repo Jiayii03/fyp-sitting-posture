@@ -2,7 +2,8 @@
 This script contains a function to create a random augmenter to apply random augmentations to a single image.
 
 Change the input directory and image path variable to test the augmentation on a different image.
-run python single_data_augmentation.py
+run 
+python single_data_augmentation.py
 '''
 
 import albumentations as A
