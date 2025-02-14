@@ -7,7 +7,7 @@ const STORAGE_KEY = 'sidebarSettings';
 // Default settings
 const DEFAULT_SETTINGS = {
   detectionMode: "single",
-  modelType: "Model 1",
+  modelType: "ANN_150e_lr_1e-03_acc_8298",
   sensitivity: {
     reclining: 50,
     crossed_legs: 50,

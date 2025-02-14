@@ -22,58 +22,87 @@ import torch
 import mediapipe as mp
 from sklearn.preprocessing import StandardScaler
 import numpy as np
+import importlib.util
+import warnings
+warnings.filterwarnings("ignore")
 
-# Add the directory containing the model to sys.path
-model_dir = "../models/2024-11-24_16-34-03"
-sys.path.append(model_dir)
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "../"))
+sys.path.append(PROJECT_ROOT)
 
-project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../"))
-sys.path.append(project_root)
+# SOURCE_DIR = os.path.join(PROJECT_ROOT, "source")
+# sys.path.append(SOURCE_DIR)
 
-source_dir = os.path.join(project_root, "source")
-sys.path.append(source_dir)
-
-# Import the MLP class
-from model import MLP
 from inference.pipeline import extract_keypoints, predict_posture
 from inference.pipeline_multi import extract_keypoints_multi_person
 
 app = Flask(__name__)
+
+INPUT_SIZE = 20
+CLASS_LABELS = ["crossed_legs", "proper", "reclining", "slouching"]
+DEFAULT_MODEL_TYPE = "ANN_150e_lr_1e-03_acc_8298"
+MODEL_DICT = {
+    "ANN_150e_lr_1e-03_acc_8298": {
+        "model_dir": "../models/2024-11-24_16-34-03",
+        "model_path": "../models/2024-11-24_16-34-03/epochs_150_lr_1e-03_wd_1e-03_acc_8298.pth",
+    },
+    "ANN_50e_lr_1e-03_acc_76": {
+        "model_dir": "../models/2024-11-24_00-04-05",
+        "model_path": "../models/2024-11-24_00-04-05/epochs_50_lr_1e-03_acc_76.pth",
+    }
+}
+model_cache = {} # Cache for loaded models
+
+# Function to initialise the camera with the given index and resolution
+def initialize_camera(camera_index, width=1920, height=1080):
+    """Initialize the camera with the given index and resolution."""
+    camera = cv2.VideoCapture(camera_index, cv2.CAP_MSMF)
+    camera.set(cv2.CAP_PROP_FRAME_WIDTH, width)
+    camera.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
+    actual_width = int(camera.get(cv2.CAP_PROP_FRAME_WIDTH))
+    actual_height = int(camera.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    print(f"Camera initialized with resolution: {actual_width}x{actual_height}")
+    return camera
+
+# Dynamically import the MLP class from the specified model directory.
+def import_mlp_from_dir(model_dir):
+    sys.path.insert(0, model_dir)
+    spec = importlib.util.spec_from_file_location("MLP", os.path.join(model_dir, "model.py"))
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    sys.path.pop(0)
+    return module.MLP
+
+# Function to load model dynamically based on query parameter
+def load_model(model_type):
+    if model_type in model_cache:
+        print(f"Model loaded from cache: {model_type}")
+        return model_cache[model_type]
+    
+    model_dir = MODEL_DICT[model_type]["model_dir"]
+    MLP = import_mlp_from_dir(model_dir)
+    model_path = MODEL_DICT[model_type]["model_path"]
+    model = MLP(input_size=INPUT_SIZE, num_classes=len(CLASS_LABELS)) 
+    model.load_state_dict(torch.load(model_path))
+    model.eval()
+    model_cache[model_type] = model
+    print(f"Model loaded: {model_type}")
+    return model
+
+# Function to load scaler
+def load_scaler(model_dir):
+    scaler = StandardScaler()
+    scaler.mean_ = np.load(os.path.join(model_dir, 'scaler_mean.npy'))
+    scaler.scale_ = np.load(os.path.join(model_dir, 'scaler_scale.npy'))
+    return scaler
 
 # Parse command-line arguments
 parser = argparse.ArgumentParser(description="Video stream server.")
 parser.add_argument('--camera_index', type=int, default=0, help='Index of the camera to use (default: 0)')
 args = parser.parse_args()
 
-# Global camera instance
 camera_lock = threading.Lock()
-camera = cv2.VideoCapture(args.camera_index, cv2.CAP_MSMF)
-
-# Try setting a higher resolution
-camera.set(cv2.CAP_PROP_FRAME_WIDTH, 1920)
-camera.set(cv2.CAP_PROP_FRAME_HEIGHT, 1080)
-
-# Check if the camera supports it
-width = int(camera.get(cv2.CAP_PROP_FRAME_WIDTH))
-height = int(camera.get(cv2.CAP_PROP_FRAME_HEIGHT))
-print(f"Attempted resolution: {width}x{height}")
-
-# Load the saved model and scaler
-model_path = "../models/2024-11-24_16-34-03/epochs_150_lr_1e-03_wd_1e-03_acc_8298.pth"
-scaler_mean_path = "../models/2024-11-24_16-34-03/scaler_mean.npy"
-scaler_scale_path = "../models/2024-11-24_16-34-03/scaler_scale.npy"
-class_labels = ["crossed_legs", "proper", "reclining", "slouching"]
-
-# Load model
-input_size = 20  # Update this based on your keypoints input size
-model = MLP(input_size=input_size, num_classes=len(class_labels))
-model.load_state_dict(torch.load(model_path))
-model.eval()
-
-# Load scaler
-scaler = StandardScaler()
-scaler.mean_ = np.load(scaler_mean_path)
-scaler.scale_ = np.load(scaler_scale_path)
+camera = initialize_camera(args.camera_index) 
+scaler = load_scaler(MODEL_DICT[DEFAULT_MODEL_TYPE]["model_dir"])
 
 @app.route('/video_feed')
 def video_feed():
@@ -97,6 +126,10 @@ def video_feed():
 @app.route('/video_feed_keypoints')
 def video_feed_keypoints():
     """Stream video feed with keypoints overlay and posture classification."""
+    
+    model_type = request.args.get('model_type', DEFAULT_MODEL_TYPE)
+    model = load_model(model_type)
+    
     mp_pose = mp.solutions.pose
     pose = mp_pose.Pose(static_image_mode=False, min_detection_confidence=0.5, min_tracking_confidence=0.5)
 
@@ -111,7 +144,7 @@ def video_feed_keypoints():
             keypoints, frame_with_keypoints = extract_keypoints(frame, pose)
 
             if keypoints is not None:
-                predicted_label, confidence_scores = predict_posture(model, keypoints, scaler, class_labels)
+                predicted_label, confidence_scores = predict_posture(model, keypoints, scaler, CLASS_LABELS)
 
                 # Set color and feedback text
                 color = (0, 255, 0) if predicted_label == "proper" else (0, 0, 255)
@@ -133,6 +166,10 @@ def video_feed_keypoints():
 @app.route('/video_feed_keypoints_multi', methods=['GET'])
 def video_feed_keypoints_multi():
     """Stream video feed with keypoints overlay and multi-person posture classification."""
+    
+    model_type = request.args.get('model_type', DEFAULT_MODEL_TYPE)
+    model = load_model(model_type)
+    
     mp_pose = mp.solutions.pose
     pose = mp_pose.Pose(static_image_mode=False, min_detection_confidence=0.5, min_tracking_confidence=0.5)
 
@@ -157,7 +194,7 @@ def video_feed_keypoints_multi():
                         continue
 
                     # Predict posture for each detected person
-                    predicted_label, confidence_scores = predict_posture(model, keypoints, scaler, class_labels)
+                    predicted_label, confidence_scores = predict_posture(model, keypoints, scaler, CLASS_LABELS)
 
                     # Get bounding box for the person
                     x_min, y_min, x_max, y_max = bboxes[i]
@@ -206,6 +243,9 @@ def capture_predict():
     }
     }' "http://localhost:5000/capture_predict"
     """
+    model_type = request.args.get('model_type', DEFAULT_MODEL_TYPE)
+    model = load_model(model_type)
+    
     # Capture a frame from the camera
     with camera_lock:
         success, frame = camera.read()
@@ -240,7 +280,7 @@ def capture_predict():
 
     # Predict posture
     predicted_label, confidence_scores = predict_posture(
-        model, keypoints, scaler, class_labels, sensitivity_adjustments=sensitivity_adjustments
+        model, keypoints, scaler, CLASS_LABELS, sensitivity_adjustments=sensitivity_adjustments
     )
 
     return jsonify({

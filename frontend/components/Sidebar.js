@@ -5,6 +5,8 @@ import { Listbox, Switch, RadioGroup } from "@headlessui/react";
 import { useSidebarSettings } from "@/context/SidebarContext";
 import toast from "react-hot-toast";
 
+const MODEL_TYPES = ["ANN_150e_lr_1e-03_acc_8298", "ANN_50e_lr_1e-03_acc_76"];
+
 const Sidebar = () => {
   const [isOpen, setIsOpen] = useState(false);
   const sidebarRef = useRef(null);
@@ -157,10 +159,10 @@ const Sidebar = () => {
               }}
             >
               <Listbox.Button className="w-full p-1 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-slate-500 shadow-sm transition duration-200">
-                {modelType}
+                {modelType || DEFAULT_MODEL_TYPE}
               </Listbox.Button>
               <Listbox.Options className="mt-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm transition duration-200">
-                {["Model 1", "Model 2", "Model 3"].map((model) => (
+                {MODEL_TYPES.map((model) => (
                   <Listbox.Option
                     key={model}
                     value={model}
