@@ -9,9 +9,9 @@ const DEFAULT_SETTINGS = {
   detectionMode: "single",
   modelType: "ANN_150e_lr_1e-03_acc_8298",
   sensitivity: {
-    reclining: 50,
-    crossed_legs: 50,
-    slouching: 50,
+    reclining: 100,
+    crossed_legs: 100,
+    slouching: 100,
   },
   isAlertEnabled: true
 };

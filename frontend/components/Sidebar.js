@@ -3,6 +3,7 @@
 import React, { useRef, useState, useEffect } from "react";
 import { Listbox, Switch, RadioGroup } from "@headlessui/react";
 import { useSidebarSettings } from "@/context/SidebarContext";
+import { useLog } from "@/context/LoggingContext";
 import toast from "react-hot-toast";
 
 const MODEL_TYPES = ["ANN_150e_lr_1e-03_acc_8298", "ANN_50e_lr_1e-03_acc_76"];
@@ -22,16 +23,19 @@ const Sidebar = () => {
     setIsAlertEnabled,
   } = useSidebarSettings();
 
+  const { addLog } = useLog();
+
   // Handle settings updates with debounced toast
   const [toastDebounce, setToastDebounce] = useState(null);
 
-  const showUpdateToast = () => {
+  const showUpdateToast = (key, value) => {
     if (toastDebounce) {
       clearTimeout(toastDebounce);
     }
 
     const newTimeout = setTimeout(() => {
       toast.success("Settings updated successfully!");
+      addLog(`Sensitivity for ${key.replace("_", " ")} set to ${value}%`);
     }, 500);
 
     setToastDebounce(newTimeout);
@@ -68,7 +72,8 @@ const Sidebar = () => {
       ...sensitivity,
       [key]: parseInt(value),
     });
-    showUpdateToast();
+    showUpdateToast(key, value);
+    
   };
 
   return (

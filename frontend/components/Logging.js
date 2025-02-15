@@ -1,13 +1,17 @@
 "use client";
 
 import React from "react";
+import { useLog } from "@/context/LoggingContext";
 
 const Logging = ({ isOpen, toggleLogging }) => {
+
+  const { logs } = useLog();
+
   return (
     <>
       {/* Logging Section */}
       <div
-        className={`fixed top-0 right-0 h-full bg-white shadow-lg transition-transform duration-300 z-50 ${
+        className={`fixed top-0 right-0 h-full bg-white shadow-lg transition-transform duration-300 z-50 overflow-y-scroll ${
           isOpen ? "translate-x-0" : "translate-x-full"
         } w-1/4`}
       >
@@ -20,10 +24,9 @@ const Logging = ({ isOpen, toggleLogging }) => {
         <div className="p-4">
           <h2 className="text-lg font-bold mb-4">Logs</h2>
           <div className="overflow-y-auto h-full">
-            <p className="text-sm">Log 1: System initialized...</p>
-            <p className="text-sm">Log 2: Video stream started...</p>
-            <p className="text-sm">Log 3: Keypoints detected...</p>
-            {/* Add more logs dynamically */}
+            {logs.map((log) => (
+              <p key={log} className="text-sm">{log}</p>
+            ))}
           </div>
         </div>
       </div>
