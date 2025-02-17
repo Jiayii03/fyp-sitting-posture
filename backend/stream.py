@@ -127,6 +127,14 @@ def video_feed():
 def video_feed_keypoints():
     """Stream video feed with keypoints overlay and posture classification."""
     
+    reclining_sensitivity = request.args.get('reclining', 1)
+    slouching_sensitivity = request.args.get('slouching', 1)
+    crossed_legs_sensitivity = request.args.get('crossed_legs', 1)
+    sensitivity_adjustments = {
+        "reclining": float(reclining_sensitivity),
+        "slouching": float(slouching_sensitivity),
+        "crossed_legs": float(crossed_legs_sensitivity)
+    }
     model_type = request.args.get('model_type', DEFAULT_MODEL_TYPE)
     model = load_model(model_type)
     
@@ -144,7 +152,7 @@ def video_feed_keypoints():
             keypoints, frame_with_keypoints = extract_keypoints(frame, pose)
 
             if keypoints is not None:
-                predicted_label, confidence_scores = predict_posture(model, keypoints, scaler, CLASS_LABELS)
+                predicted_label, confidence_scores = predict_posture(model, keypoints, scaler, CLASS_LABELS, sensitivity_adjustments=sensitivity_adjustments)
 
                 # Set color and feedback text
                 color = (0, 255, 0) if predicted_label == "proper" else (0, 0, 255)
@@ -167,6 +175,14 @@ def video_feed_keypoints():
 def video_feed_keypoints_multi():
     """Stream video feed with keypoints overlay and multi-person posture classification."""
     
+    reclining_sensitivity = request.args.get('reclining', 1)
+    slouching_sensitivity = request.args.get('slouching', 1)
+    crossed_legs_sensitivity = request.args.get('crossed_legs', 1)
+    sensitivity_adjustments = {
+        "reclining": float(reclining_sensitivity),
+        "slouching": float(slouching_sensitivity),
+        "crossed_legs": float(crossed_legs_sensitivity)
+    }
     model_type = request.args.get('model_type', DEFAULT_MODEL_TYPE)
     model = load_model(model_type)
     
@@ -194,7 +210,7 @@ def video_feed_keypoints_multi():
                         continue
 
                     # Predict posture for each detected person
-                    predicted_label, confidence_scores = predict_posture(model, keypoints, scaler, CLASS_LABELS)
+                    predicted_label, confidence_scores = predict_posture(model, keypoints, scaler, CLASS_LABELS, sensitivity_adjustments=sensitivity_adjustments)
 
                     # Get bounding box for the person
                     x_min, y_min, x_max, y_max = bboxes[i]

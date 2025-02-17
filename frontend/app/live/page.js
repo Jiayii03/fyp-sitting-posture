@@ -36,25 +36,25 @@ function Page() {
     addLog(isCameraFeedActive ? "Camera feed stopped" : "Camera feed started");
   };
 
+  useEffect(() => {
+    console.log(videoFeedURL);
+  }, [videoFeedURL]);
+
   useStableEffect(() => {
-    if (detectionMode === "single") {
-      setVideoFeedURL(VIDEO_FEED_KEYPOINTS_URL + "?model_type=" + modelType);
-      addLog("Using single-detection mode");
-    } else {
-      setVideoFeedURL(
-        VIDEO_FEED_KEYPOINTS_MULTI_URL + "?model_type=" + modelType
-      );
-      addLog("Using multi-detection mode");
-    }
+    addLog(`Using ${detectionMode} detection mode`);
   }, [detectionMode]);
 
   useStableEffect(() => {
-    addLog(`Using model: ${modelType}`);
+    addLog(`Using model type: ${modelType}`);
   }, [modelType]);
 
   useStableEffect(() => {
     addLog(`Alerts are ${isAlertEnabled ? "enabled" : "disabled"}`);
   }, [isAlertEnabled]);
+
+  useEffect(() => { 
+    setVideoFeedURL(`${detectionMode === "single" ? VIDEO_FEED_KEYPOINTS_URL : VIDEO_FEED_KEYPOINTS_MULTI_URL}?model_type=${modelType}&reclining=${(sensitivity.reclining)/100}&crossed_legs=${(sensitivity.crossed_legs)/100}&slouching=${(sensitivity.slouching)/100}`);
+  }, [detectionMode, modelType, sensitivity, isAlertEnabled]);
 
   return (
     <div className="flex h-screen">
