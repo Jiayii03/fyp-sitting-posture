@@ -12,6 +12,7 @@ import { Switch } from "@headlessui/react";
 const VIDEO_FEED_KEYPOINTS_URL = "http://localhost:5000/video_feed_keypoints";
 const VIDEO_FEED_KEYPOINTS_MULTI_URL =
   "http://localhost:5000/video_feed_keypoints_multi";
+const TOGGLE_INFERENCE_URL = "http://localhost:5000/toggle_inference";
 
 function Page() {
   const { detectionMode, modelType, sensitivity, isAlertEnabled } =
@@ -31,9 +32,26 @@ function Page() {
     setIsLoggingOpen(!isLoggingOpen);
   };
 
-  const toggleCameraFeed = () => {
-    setIsCameraFeedActive((prev) => !prev);
-    addLog(isCameraFeedActive ? "Camera feed stopped" : "Camera feed started");
+  const toggleCameraFeed = async () => {
+    const action = isCameraFeedActive ? "stop" : "start";
+    try {
+      const response = await fetch(TOGGLE_INFERENCE_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action }),
+      });
+
+      const result = await response.json();
+      if (response.ok) {
+        setIsCameraFeedActive((prev) => !prev);
+        addLog(result.message);
+      } else {
+        addLog(`Failed to toggle camera: ${result.message}`);
+      }
+    } catch (error) {
+      console.error("Error toggling camera feed:", error);
+      addLog("Failed to toggle camera feed due to a network error.");
+    }
   };
 
   useEffect(() => {

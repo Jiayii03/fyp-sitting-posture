@@ -12,6 +12,8 @@ API Endpoints:
 - /capture_predict: Captures a photo from the camera, runs sitting posture inference, and returns the predicted posture as a json. POST request.
 """
 from flask import Flask, Response, jsonify, request
+from flask_cors import CORS
+from kafka import KafkaProducer
 import cv2
 import sys
 import os
@@ -19,6 +21,8 @@ import argparse
 import threading
 import time
 import torch
+import json
+import subprocess
 import mediapipe as mp
 from sklearn.preprocessing import StandardScaler
 import numpy as np
@@ -27,8 +31,7 @@ import warnings
 warnings.filterwarnings("ignore")
 
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "../"))
-sys.path.append(PROJECT_ROOT)
-
+sys.path.append(PROJECT_ROOT) 
 # SOURCE_DIR = os.path.join(PROJECT_ROOT, "source")
 # sys.path.append(SOURCE_DIR)
 
@@ -36,6 +39,7 @@ from inference.pipeline import extract_keypoints, predict_posture
 from inference.pipeline_multi import extract_keypoints_multi_person
 
 app = Flask(__name__)
+CORS(app, resources={r"/*": {"origins": "*"}})
 
 INPUT_SIZE = 20
 CLASS_LABELS = ["crossed_legs", "proper", "reclining", "slouching"]
@@ -51,17 +55,58 @@ MODEL_DICT = {
     }
 }
 model_cache = {} # Cache for loaded models
+# Global variables
+inference_running = True
+camera_lock = threading.Lock()
+camera = None
 
-# Function to initialise the camera with the given index and resolution
-def initialize_camera(camera_index, width=1920, height=1080):
+def start_docker_containers():
+    """Start Kafka and Zookeeper containers if they are not already running."""
+    try:
+        # Check if Kafka container is running
+        kafka_running = subprocess.run(["docker", "ps", "-q", "-f", "name=kafka"], capture_output=True, text=True).stdout.strip()
+        zookeeper_running = subprocess.run(["docker", "ps", "-q", "-f", "name=zookeeper"], capture_output=True, text=True).stdout.strip()
+
+        if not kafka_running or not zookeeper_running:
+            print("Kafka or Zookeeper container not running. Starting Kafka and Zookeeper containers...")
+            # Run Docker Compose to start the containers
+            subprocess.run(["docker-compose", "-f", "docker-compose.yml", "up", "-d"], check=True)
+
+            # Wait for Kafka and Zookeeper to become available
+            time.sleep(10) # Wait a few seconds to allow Kafka and Zookeeper to initialize
+            print("Kafka and Zookeeper containers started successfully.")
+        else:
+            print("Kafka and Zookeeper containers are already running.")
+    except Exception as e:
+        print(f"Error while starting Docker containers: {e}")
+
+def initialize_camera(camera_index=0, width=1920, height=1080):
     """Initialize the camera with the given index and resolution."""
-    camera = cv2.VideoCapture(camera_index, cv2.CAP_MSMF)
-    camera.set(cv2.CAP_PROP_FRAME_WIDTH, width)
-    camera.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
-    actual_width = int(camera.get(cv2.CAP_PROP_FRAME_WIDTH))
-    actual_height = int(camera.get(cv2.CAP_PROP_FRAME_HEIGHT))
-    print(f"Camera initialized with resolution: {actual_width}x{actual_height}")
-    return camera
+    global camera
+    with camera_lock:
+        if camera is None or not camera.isOpened():
+            camera = cv2.VideoCapture(camera_index, cv2.CAP_MSMF)
+            camera.set(cv2.CAP_PROP_FRAME_WIDTH, width)
+            camera.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
+            actual_width = int(camera.get(cv2.CAP_PROP_FRAME_WIDTH))
+            actual_height = int(camera.get(cv2.CAP_PROP_FRAME_HEIGHT))
+            print(f"Camera initialized with resolution: {actual_width}x{actual_height}")
+
+def stop_inference():
+    """Stop the camera feed by releasing the camera."""
+    global inference_running, camera
+    with camera_lock:
+        if camera and camera.isOpened():
+            camera.release()
+            print("Camera feed and inference stopped.")
+    inference_running = False
+
+def start_inference():
+    """Start the camera feed again with the specified resolution."""
+    global inference_running
+    initialize_camera()
+    inference_running = True
+    print("Camera feed and inference started.")
 
 # Dynamically import the MLP class from the specified model directory.
 def import_mlp_from_dir(model_dir):
@@ -99,10 +144,15 @@ def load_scaler(model_dir):
 parser = argparse.ArgumentParser(description="Video stream server.")
 parser.add_argument('--camera_index', type=int, default=0, help='Index of the camera to use (default: 0)')
 args = parser.parse_args()
-
-camera_lock = threading.Lock()
-camera = initialize_camera(args.camera_index) 
 scaler = load_scaler(MODEL_DICT[DEFAULT_MODEL_TYPE]["model_dir"])
+
+start_docker_containers()
+
+# Initialize Kafka producer
+producer = KafkaProducer(
+    bootstrap_servers='localhost:9092',
+    value_serializer=lambda v: json.dumps(v).encode('utf-8')
+)
 
 @app.route('/video_feed')
 def video_feed():
@@ -126,7 +176,7 @@ def video_feed():
 @app.route('/video_feed_keypoints')
 def video_feed_keypoints():
     """Stream video feed with keypoints overlay and posture classification."""
-    
+    global inference_running
     reclining_sensitivity = request.args.get('reclining', 1)
     slouching_sensitivity = request.args.get('slouching', 1)
     crossed_legs_sensitivity = request.args.get('crossed_legs', 1)
@@ -140,9 +190,13 @@ def video_feed_keypoints():
     
     mp_pose = mp.solutions.pose
     pose = mp_pose.Pose(static_image_mode=False, min_detection_confidence=0.5, min_tracking_confidence=0.5)
+    
+    last_emit_time = 0
+    previous_posture = None
 
     def generate():
-        while True:
+        nonlocal last_emit_time, previous_posture
+        while inference_running:
             with camera_lock:
                 success, frame = camera.read()
             if not success:
@@ -153,6 +207,15 @@ def video_feed_keypoints():
 
             if keypoints is not None:
                 predicted_label, confidence_scores = predict_posture(model, keypoints, scaler, CLASS_LABELS, sensitivity_adjustments=sensitivity_adjustments)
+                
+                current_time = time.time()
+                if predicted_label != previous_posture and (current_time - last_emit_time) > 1:
+                    previous_posture = predicted_label
+                    last_emit_time = current_time
+
+                    # Send posture event to Kafka
+                    producer.send('posture_events', {'posture': predicted_label})
+                    print(f"📤 Sent posture event: {predicted_label}")
 
                 # Set color and feedback text
                 color = (0, 255, 0) if predicted_label == "proper" else (0, 0, 255)
@@ -305,6 +368,22 @@ def capture_predict():
         "predicted_posture": predicted_label,
         "confidence_scores": confidence_scores
     })
+    
+@app.route('/toggle_inference', methods=['POST'])
+def toggle_inference():
+    """Toggle the camera feed and inference."""
+    global inference_running
+    data = request.json
+    action = data.get("action")
+
+    if action == "stop":
+        stop_inference()
+        return jsonify({"status": "success", "message": "Inference stopped"})
+    elif action == "start":
+        start_inference()
+        return jsonify({"status": "success", "message": "Inference started"})
+    else:
+        return jsonify({"status": "error", "message": "Invalid action"}), 400
     
 
 if __name__ == '__main__':
