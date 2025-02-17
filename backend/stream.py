@@ -14,8 +14,10 @@ API Endpoints:
 from flask import Flask, Response, jsonify, request
 from flask_cors import CORS
 from kafka import KafkaProducer
+from dotenv import load_dotenv
 import cv2
 import sys
+import requests
 import os
 import argparse
 import threading
@@ -30,6 +32,7 @@ import importlib.util
 import warnings
 warnings.filterwarnings("ignore")
 
+load_dotenv()
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "../"))
 sys.path.append(PROJECT_ROOT) 
 # SOURCE_DIR = os.path.join(PROJECT_ROOT, "source")
@@ -54,8 +57,11 @@ MODEL_DICT = {
         "model_path": "../models/2024-11-24_00-04-05/epochs_50_lr_1e-03_acc_76.pth",
     }
 }
-model_cache = {} # Cache for loaded models
+TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+CHAT_ID = os.getenv("CHAT_ID")
+
 # Global variables
+model_cache = {} # Cache for loaded models
 inference_running = True
 camera_lock = threading.Lock()
 camera = None
@@ -91,6 +97,19 @@ def initialize_camera(camera_index=0, width=1920, height=1080):
             actual_width = int(camera.get(cv2.CAP_PROP_FRAME_WIDTH))
             actual_height = int(camera.get(cv2.CAP_PROP_FRAME_HEIGHT))
             print(f"Camera initialized with resolution: {actual_width}x{actual_height}")
+            
+def send_telegram_alert(message):
+    """Send an alert via Telegram."""
+    url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
+    payload = {
+        "chat_id": CHAT_ID,
+        "text": message
+    }
+    response = requests.post(url, json=payload)
+    if response.status_code == 200:
+        print("✅ Telegram alert sent successfully!")
+    else:
+        print(f"❌ Failed to send Telegram alert: {response.text}")
 
 def stop_inference():
     """Stop the camera feed by releasing the camera."""
@@ -103,6 +122,7 @@ def stop_inference():
 
 def start_inference():
     """Start the camera feed again with the specified resolution."""
+    send_telegram_alert("✅ Inference started: Camera feed is now active.")
     global inference_running
     initialize_camera()
     inference_running = True
@@ -382,7 +402,7 @@ def toggle_inference():
     """Toggle the camera feed and inference.
     curl -X POST http://localhost:5000/toggle_inference \
      -H "Content-Type: application/json" \
-     -d '{"action": "start"}
+     -d "{\"action\": \"start\"}"
     """
     global inference_running
     data = request.json
