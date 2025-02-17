@@ -1,16 +1,16 @@
 // app/api/kafkaConsumer/route.js
-import { Kafka } from 'kafkajs';
+import { Kafka } from "kafkajs";
 
 export async function GET(req) {
   const kafka = new Kafka({
-    clientId: 'posture-consumer',
-    brokers: ['localhost:9092'],
+    clientId: "posture-consumer",
+    brokers: ["localhost:9092"],
   });
 
-  const consumer = kafka.consumer({ groupId: 'posture-group' });
+  const consumer = kafka.consumer({ groupId: "posture-group" });
 
   await consumer.connect();
-  await consumer.subscribe({ topic: 'posture_events', fromBeginning: false });
+  await consumer.subscribe({ topic: "posture_events", fromBeginning: false });
 
   const readableStream = new ReadableStream({
     start(controller) {
@@ -25,9 +25,9 @@ export async function GET(req) {
 
   return new Response(readableStream, {
     headers: {
-      'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache',
-      'Connection': 'keep-alive',
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache",
+      Connection: "keep-alive",
     },
   });
 }

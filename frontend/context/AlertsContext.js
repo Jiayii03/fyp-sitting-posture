@@ -17,19 +17,21 @@ export const AlertsProvider = ({ children }) => {
     const eventSource = new EventSource("/api/kafkaConsumer");
 
     eventSource.onmessage = (event) => {
+      const timestamp = new Date().toLocaleTimeString("en-GB");
       const eventData = JSON.parse(event.data);
       console.log("Kafka Event Received:", eventData);
-      addAlert(`Posture changed to: ${eventData.posture}`);
+
+      // Ensure 'message' exists, fallback to 'posture' if not present
+      const displayMessage =
+        eventData.message || `Posture: ${eventData.posture}`;
+      addAlert(`${timestamp} - ${displayMessage}`);
     };
 
     eventSource.onerror = (error) => {
-      console.error("SSE Error:", error);
-      eventSource.close();
+      console.error("Kafka EventSource Error:", error);
     };
 
-    return () => {
-      eventSource.close();
-    };
+    return () => eventSource.close();
   }, []);
 
   return (

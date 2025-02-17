@@ -214,8 +214,12 @@ def video_feed_keypoints():
                     last_emit_time = current_time
 
                     # Send posture event to Kafka
-                    producer.send('posture_events', {'posture': predicted_label})
-                    print(f"📤 Sent posture event: {predicted_label}")
+                    producer.send('posture_events', {
+                        'posture': predicted_label,
+                        'message': f"Posture changed to: {predicted_label}"
+                    })
+                    print(f"📤 Sent posture event: Posture changed to: {predicted_label}")
+
 
                 # Set color and feedback text
                 color = (0, 255, 0) if predicted_label == "proper" else (0, 0, 255)
@@ -316,11 +320,15 @@ def capture_predict():
     Capture a photo and run sitting posture inference with sensitivity adjustments.
     Accepts sensitivity adjustments exclusively via JSON request body.
     
-    curl -X POST -H "Content-Type: application/json" -d '{
-    "sensitivity_adjustments": {
-        "reclining": 0.8,
-    }
-    }' "http://localhost:5000/capture_predict"
+    curl -X POST http://localhost:5000/capture_predict \
+    -H "Content-Type: application/json" \
+    -d '{
+          "sensitivity_adjustments": {
+            "reclining": 0.8,
+            "slouching": 0.6,
+            "crossed_legs": 0.7
+          }
+        }'
     """
     model_type = request.args.get('model_type', DEFAULT_MODEL_TYPE)
     model = load_model(model_type)
@@ -371,7 +379,11 @@ def capture_predict():
     
 @app.route('/toggle_inference', methods=['POST'])
 def toggle_inference():
-    """Toggle the camera feed and inference."""
+    """Toggle the camera feed and inference.
+    curl -X POST http://localhost:5000/toggle_inference \
+     -H "Content-Type: application/json" \
+     -d '{"action": "start"}
+    """
     global inference_running
     data = request.json
     action = data.get("action")
