@@ -13,7 +13,7 @@ const DEFAULT_SETTINGS = {
     crossed_legs: 100,
     slouching: 100,
   },
-  isAlertEnabled: true
+  isAlertEnabled: false
 };
 
 // Create the context

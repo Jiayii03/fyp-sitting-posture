@@ -41,6 +41,47 @@ const Sidebar = () => {
     setToastDebounce(newTimeout);
   };
 
+  // Handle sensitivity changes with local state
+  const handleSensitivityChange = (key, value) => {
+    setSensitivity({
+      ...sensitivity,
+      [key]: parseInt(value),
+    });
+    showUpdateToast(key, value);
+  };
+
+  // Function to toggle messaging alerts
+  const toggleMessagingAlert = async () => {
+    const action = isAlertEnabled ? "disable" : "enable";
+
+    try {
+      const response = await fetch(
+        "http://localhost:5000/toggle_messaging_alert",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ action }),
+        }
+      );
+
+      const result = await response.json();
+      if (result.status === "success") {
+        toast.success(result.message);
+        addLog(result.message);
+        setIsAlertEnabled(!isAlertEnabled);
+      } else {
+        toast.error(result.message);
+        addLog(`Failed to toggle messaging alerts: ${result.message}`);
+      }
+    } catch (error) {
+      toast.error("Failed to toggle messaging alerts due to a network error.");
+      addLog("Failed to toggle messaging alerts due to a network error.");
+      console.error("Error toggling messaging alerts:", error);
+    }
+  };
+
   // Cleanup toast debounce on unmount
   useEffect(() => {
     return () => {
@@ -65,16 +106,6 @@ const Sidebar = () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, [isOpen]);
-
-  // Handle sensitivity changes with local state
-  const handleSensitivityChange = (key, value) => {
-    setSensitivity({
-      ...sensitivity,
-      [key]: parseInt(value),
-    });
-    showUpdateToast(key, value);
-    
-  };
 
   return (
     <>
@@ -204,10 +235,7 @@ const Sidebar = () => {
             <h3 className="text-sm font-semibold mb-2">Alert System</h3>
             <Switch
               checked={isAlertEnabled}
-              onChange={(checked) => {
-                setIsAlertEnabled(checked);
-                showUpdateToast();
-              }}
+              onChange={toggleMessagingAlert}
               className={`${
                 isAlertEnabled ? "bg-slate-500" : "bg-slate-300"
               } relative inline-flex items-center h-4 rounded-full w-8`}

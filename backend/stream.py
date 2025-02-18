@@ -63,6 +63,7 @@ CHAT_ID = os.getenv("CHAT_ID")
 # Global variables
 model_cache = {} # Cache for loaded models
 inference_running = True
+messaging_alert_enabled = False
 camera_lock = threading.Lock()
 camera = None
 
@@ -99,17 +100,15 @@ def initialize_camera(camera_index=0, width=1920, height=1080):
             print(f"Camera initialized with resolution: {actual_width}x{actual_height}")
             
 def send_telegram_alert(message):
-    """Send an alert via Telegram."""
-    url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
-    payload = {
-        "chat_id": CHAT_ID,
-        "text": message
-    }
-    response = requests.post(url, json=payload)
-    if response.status_code == 200:
-        print("✅ Telegram alert sent successfully!")
-    else:
-        print(f"❌ Failed to send Telegram alert: {response.text}")
+    """Send an alert via Telegram if enabled."""
+    if messaging_alert_enabled:
+        url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
+        payload = {"chat_id": CHAT_ID, "text": message}
+        response = requests.post(url, json=payload)
+        if response.status_code == 200:
+            print("✅ Telegram alert sent successfully!")
+        else:
+            print(f"❌ Failed to send Telegram alert: {response.text}")
 
 def stop_inference():
     """Stop the camera feed by releasing the camera."""
@@ -416,6 +415,22 @@ def toggle_inference():
         return jsonify({"status": "success", "message": "Inference started"})
     else:
         return jsonify({"status": "error", "message": "Invalid action"}), 400
+    
+@app.route('/toggle_messaging_alert', methods=['POST'])
+def toggle_messaging_alert():
+    """Toggle the messaging alert for posture notifications."""
+    global messaging_alert_enabled
+    data = request.json
+    action = data.get("action")
+
+    if action == "enable":
+        messaging_alert_enabled = True
+        return jsonify({"status": "success", "message": "Messaging alerts enabled"})
+    elif action == "disable":
+        messaging_alert_enabled = False
+        return jsonify({"status": "success", "message": "Messaging alerts disabled"})
+    else:
+        return jsonify({"status": "error", "message": "Invalid action. Use 'enable' or 'disable'."}), 400
     
 
 if __name__ == '__main__':
