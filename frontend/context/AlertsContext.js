@@ -23,7 +23,10 @@ export const AlertsProvider = ({ children }) => {
 
       // Ensure 'message' exists, fallback to 'posture' if not present
       const displayMessage =
-        eventData.message || `Posture: ${eventData.posture}`;
+        eventData.type === "alert"
+          ? `⚠️ Alert: ${eventData.message}`
+          : `🪑 Posture: ${eventData.posture}`;
+
       addAlert(`${timestamp} - ${displayMessage}`);
     };
 

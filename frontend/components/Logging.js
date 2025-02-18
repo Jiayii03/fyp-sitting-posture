@@ -40,13 +40,18 @@ const Logging = ({ isOpen, toggleLogging }) => {
 
             <button
               onClick={() => setSelectedTab("Alerts")}
-              className={`px-4 py-2 text-sm font-medium ${
+              className={`relative px-4 py-2 text-sm font-medium ${
                 selectedTab === "Alerts"
                   ? "text-blue-600 border-b-2 border-blue-600"
                   : "text-gray-500"
               } hover:text-blue-500 transition duration-200`}
             >
               Alerts
+              {alerts.filter((alert) => alert.includes("Alert")).length > 0 && (
+                <span className="absolute top-2 right-0 -mt-3 -mr-2 bg-red-500 text-white text-xs font-bold w-5 h-5 flex items-center justify-center rounded-full">
+                  {alerts.filter((alert) => alert.includes("Alert")).length}
+                </span>
+              )}
             </button>
           </div>
           <div className="overflow-y-auto h-full">

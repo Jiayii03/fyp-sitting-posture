@@ -1,23 +1,37 @@
-// app/api/kafkaConsumer/route.js
 import { Kafka } from "kafkajs";
 
+// Initialize Kafka instance
+const kafka = new Kafka({
+  clientId: "posture-consumer",
+  brokers: ["localhost:9092"],
+});
+
+// Create consumer for posture events
 export async function GET(req) {
-  const kafka = new Kafka({
-    clientId: "posture-consumer",
-    brokers: ["localhost:9092"],
-  });
+  const postureConsumer = kafka.consumer({ groupId: "posture-posture-group" });
+  const alertConsumer = kafka.consumer({ groupId: "posture-alert-group" });
 
-  const consumer = kafka.consumer({ groupId: "posture-group" });
+  await postureConsumer.connect();
+  await alertConsumer.connect();
 
-  await consumer.connect();
-  await consumer.subscribe({ topic: "posture_events", fromBeginning: false });
+  await postureConsumer.subscribe({ topic: "posture_events", fromBeginning: false });
+  await alertConsumer.subscribe({ topic: "alert_events", fromBeginning: false });
 
   const readableStream = new ReadableStream({
     start(controller) {
-      consumer.run({
+      // Run consumer for posture events
+      postureConsumer.run({
         eachMessage: async ({ message }) => {
           const event = JSON.parse(message.value.toString());
-          controller.enqueue(`data: ${JSON.stringify(event)}\n\n`);
+          controller.enqueue(`data: ${JSON.stringify({ type: "posture", ...event })}\n\n`);
+        },
+      });
+
+      // Run consumer for alert events
+      alertConsumer.run({
+        eachMessage: async ({ message }) => {
+          const event = JSON.parse(message.value.toString());
+          controller.enqueue(`data: ${JSON.stringify({ type: "alert", ...event })}\n\n`);
         },
       });
     },

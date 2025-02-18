@@ -35,8 +35,6 @@ warnings.filterwarnings("ignore")
 load_dotenv()
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "../"))
 sys.path.append(PROJECT_ROOT) 
-# SOURCE_DIR = os.path.join(PROJECT_ROOT, "source")
-# sys.path.append(SOURCE_DIR)
 
 from inference.pipeline import extract_keypoints, predict_posture
 from inference.pipeline_multi import extract_keypoints_multi_person
@@ -59,9 +57,16 @@ MODEL_DICT = {
 }
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 CHAT_ID = os.getenv("CHAT_ID")
+BAD_POSTURE_FRAME_THRESHOLD = 150
+ALERT_COOLDOWN = 10
 
 # Global variables
-model_cache = {} # Cache for loaded models
+model_cache = {}
+alert_state = {
+    "last_alert_time": 0,
+    "bad_posture_count": 0,
+    "previous_posture": None
+}
 inference_running = True
 messaging_alert_enabled = False
 camera_lock = threading.Lock()
@@ -97,7 +102,8 @@ def initialize_camera(camera_index=0, width=1920, height=1080):
             camera.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
             actual_width = int(camera.get(cv2.CAP_PROP_FRAME_WIDTH))
             actual_height = int(camera.get(cv2.CAP_PROP_FRAME_HEIGHT))
-            print(f"Camera initialized with resolution: {actual_width}x{actual_height}")
+            fps = camera.get(cv2.CAP_PROP_FPS)
+            print(f"Camera initialized with resolution: {actual_width}x{actual_height}, FPS: {fps}")
             
 def send_telegram_alert(message):
     """Send an alert via Telegram if enabled."""
@@ -109,6 +115,38 @@ def send_telegram_alert(message):
             print("✅ Telegram alert sent successfully!")
         else:
             print(f"❌ Failed to send Telegram alert: {response.text}")
+            
+def reset_alert_state():
+    """Reset all global alert state variables."""
+    alert_state["last_alert_time"] = 0
+    alert_state["bad_posture_count"] = 0
+    alert_state["previous_posture"] = None
+    
+def should_send_alert(predicted_label):
+    """Combined approach: Cooldown + Stability."""
+    current_time = time.time()
+
+    # Check if the posture is improper
+    if predicted_label != "proper":
+        # Increment bad posture count if posture remains the same
+        if predicted_label == alert_state["previous_posture"]:
+            alert_state["bad_posture_count"] += 1
+        else:
+            alert_state["bad_posture_count"] = 1
+
+        # Check stability and cooldown
+        if (alert_state["bad_posture_count"] >= BAD_POSTURE_FRAME_THRESHOLD and
+            current_time - alert_state["last_alert_time"] > ALERT_COOLDOWN):
+            alert_state["last_alert_time"] = current_time
+            alert_state["bad_posture_count"] = 0
+            return True
+
+    else:
+        # Reset count if posture returns to normal
+        alert_state["bad_posture_count"] = 0
+
+    alert_state["previous_posture"] = predicted_label
+    return False
 
 def stop_inference():
     """Stop the camera feed by releasing the camera."""
@@ -195,7 +233,10 @@ def video_feed():
 @app.route('/video_feed_keypoints')
 def video_feed_keypoints():
     """Stream video feed with keypoints overlay and posture classification."""
+    
     global inference_running
+    reset_alert_state()
+    
     reclining_sensitivity = request.args.get('reclining', 1)
     slouching_sensitivity = request.args.get('slouching', 1)
     crossed_legs_sensitivity = request.args.get('crossed_legs', 1)
@@ -239,6 +280,12 @@ def video_feed_keypoints():
                     })
                     print(f"📤 Sent posture event: Posture changed to: {predicted_label}")
 
+                if should_send_alert(predicted_label):
+                    send_telegram_alert(f"⚠️ Alert: Detected bad posture - {predicted_label}")
+                    producer.send('alert_events', {
+                        'message': f"Alert Sent: Detected bad posture - {predicted_label}"
+                    })
+                    print(f"Sent alert: Detected bad posture - {predicted_label}")
 
                 # Set color and feedback text
                 color = (0, 255, 0) if predicted_label == "proper" else (0, 0, 255)
