@@ -66,7 +66,14 @@ const Logging = ({ isOpen, toggleLogging }) => {
             {selectedTab === "Alerts" &&
               alerts.map((alert, index) => (
                 <p key={index} className="text-sm">
-                  {alert}
+                  <span
+                    dangerouslySetInnerHTML={{
+                      __html: alert.replace(
+                        /\*\*(.*?)\*\*/g,
+                        "<strong>$1</strong>"
+                      ),
+                    }}
+                  />
                 </p>
               ))}
           </div>

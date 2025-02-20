@@ -283,7 +283,7 @@ def video_feed_keypoints():
                 if should_send_alert(predicted_label):
                     send_telegram_alert(f"⚠️ Alert: Detected bad posture - {predicted_label}")
                     producer.send('alert_events', {
-                        'message': f"Alert Sent: Detected bad posture - {predicted_label}"
+                        'message': f"Detected bad posture - {predicted_label}"
                     })
                     print(f"Sent alert: Detected bad posture - {predicted_label}")
 
@@ -308,6 +308,10 @@ def video_feed_keypoints():
 def video_feed_keypoints_multi():
     """Stream video feed with keypoints overlay and multi-person posture classification."""
     
+    global inference_running
+    reset_alert_state()
+
+    # Sensitivity adjustments from query parameters
     reclining_sensitivity = request.args.get('reclining', 1)
     slouching_sensitivity = request.args.get('slouching', 1)
     crossed_legs_sensitivity = request.args.get('crossed_legs', 1)
@@ -319,6 +323,7 @@ def video_feed_keypoints_multi():
     model_type = request.args.get('model_type', DEFAULT_MODEL_TYPE)
     model = load_model(model_type)
     
+    # Initialize MediaPipe pose detector
     mp_pose = mp.solutions.pose
     pose = mp_pose.Pose(static_image_mode=False, min_detection_confidence=0.5, min_tracking_confidence=0.5)
 
@@ -326,15 +331,19 @@ def video_feed_keypoints_multi():
     yolo_model_path = "../models/yolo-human-detection/yolov5n.pt"
     yolo_model = torch.hub.load('ultralytics/yolov5', 'custom', path=yolo_model_path, force_reload=False)
     yolo_model.classes = [0]  # Only detect persons (COCO class ID: 0)
+    
+    # Track postures and last emit times for each person
+    person_postures = {}
+    last_emit_times = {}
 
     def generate():
-        while True:
+        while inference_running:
             with camera_lock:
                 success, frame = camera.read()
             if not success:
                 break
 
-            # Process the frame with YOLO and Mediapipe
+            # Detect keypoints for multiple persons
             keypoints_list, frame_with_keypoints, bboxes = extract_keypoints_multi_person(frame, pose, yolo_model)
 
             if keypoints_list:
@@ -342,15 +351,43 @@ def video_feed_keypoints_multi():
                     if keypoints is None or np.isnan(keypoints).any():
                         continue
 
-                    # Predict posture for each detected person
+                    # Assign a person ID based on index
+                    person_id = f"Person {i+1}"
+
+                    # Predict posture
                     predicted_label, confidence_scores = predict_posture(model, keypoints, scaler, CLASS_LABELS, sensitivity_adjustments=sensitivity_adjustments)
 
                     # Get bounding box for the person
                     x_min, y_min, x_max, y_max = bboxes[i]
 
+                    # Track posture changes and emit logs if changed
+                    current_time = time.time()
+                    previous_posture = person_postures.get(person_id, None)
+                    last_emit_time = last_emit_times.get(person_id, 0)
+
+                    if predicted_label != previous_posture and (current_time - last_emit_time) > 1:
+                        # Update stored posture and last emit time
+                        person_postures[person_id] = predicted_label
+                        last_emit_times[person_id] = current_time
+
+                        # Log the posture change
+                        log_message = f"[{person_id}]: Changed to {predicted_label}"
+                        producer.send('posture_events', {
+                            'posture': f"{predicted_label} [**{person_id}**]",
+                            'message': log_message
+                        })
+                        print(f"📤 Sent posture event: {log_message}")
+                        
+                    if should_send_alert(predicted_label):
+                        send_telegram_alert(f"⚠️ Alert: Detected bad posture - {predicted_label} - {person_id}")
+                        producer.send('alert_events', {
+                            'message': f"Detected bad posture - {predicted_label} [**{person_id}**]"
+                        })
+                        print(f"Sent alert: Detected bad posture - {predicted_label}")
+
                     # Set color and feedback text
                     color = (0, 255, 0) if predicted_label == "proper" else (0, 0, 255)
-                    feedback_text = f"Person {i + 1}: {predicted_label} ({max(confidence_scores.values()):.2f})"
+                    feedback_text = f"{person_id}: {predicted_label} ({max(confidence_scores.values()):.2f})"
 
                     # Draw feedback text on the frame
                     cv2.putText(frame_with_keypoints, feedback_text, (x_min, y_min - 40),
@@ -479,7 +516,6 @@ def toggle_messaging_alert():
     else:
         return jsonify({"status": "error", "message": "Invalid action. Use 'enable' or 'disable'."}), 400
     
-
 if __name__ == '__main__':
     try:
         app.run(host='0.0.0.0', port=5000, debug=True)
