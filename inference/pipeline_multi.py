@@ -12,7 +12,7 @@ The pipeline consists of the following steps:
 Change the `image_path` and `model_path` variables to the paths of your image and saved model, respectively.
 
 Run the script using the following command:
-python pipeline_multi.py --image bq_recline.jpg
+python pipeline_multi.py --image crowded_3.jpg
 
 --image: Name of the image file in the images/ directory.
 --save: Save the annotated image with the predicted postures.
