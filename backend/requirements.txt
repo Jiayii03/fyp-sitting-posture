@@ -1,0 +1,12 @@
+flask
+flask-cors
+kafka-python
+python-dotenv
+opencv-python
+requests
+argparse
+torch
+numpy
+scikit-learn
+mediapipe
+importlib-metadata
