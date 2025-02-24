@@ -30,6 +30,7 @@ from sklearn.preprocessing import StandardScaler
 import numpy as np
 import importlib.util
 import warnings
+from picamera2 import Picamera2
 warnings.filterwarnings("ignore")
 
 load_dotenv()
@@ -70,19 +71,19 @@ alert_state = {
 inference_running = True
 messaging_alert_enabled = False
 camera_lock = threading.Lock()
-camera = None
+picam2 = None
 
 def start_docker_containers():
     """Start Kafka and Zookeeper containers if they are not already running."""
     try:
         # Check if Kafka container is running
-        kafka_running = subprocess.run(["docker", "ps", "-q", "-f", "name=kafka"], capture_output=True, text=True).stdout.strip()
-        zookeeper_running = subprocess.run(["docker", "ps", "-q", "-f", "name=zookeeper"], capture_output=True, text=True).stdout.strip()
+        kafka_running = subprocess.run(["sudo", "docker", "ps", "-q", "-f", "name=kafka"], capture_output=True, text=True).stdout.strip()
+        zookeeper_running = subprocess.run(["sudo", "docker", "ps", "-q", "-f", "name=zookeeper"], capture_output=True, text=True).stdout.strip()
 
         if not kafka_running or not zookeeper_running:
             print("Kafka or Zookeeper container not running. Starting Kafka and Zookeeper containers...")
             # Run Docker Compose to start the containers
-            subprocess.run(["docker-compose", "-f", "docker-compose.yml", "up", "-d"], check=True)
+            subprocess.run(["sudo", "docker-compose", "-f", "docker-compose.yml", "up", "-d"], check=True)
 
             # Wait for Kafka and Zookeeper to become available
             time.sleep(10) # Wait a few seconds to allow Kafka and Zookeeper to initialize
@@ -92,18 +93,28 @@ def start_docker_containers():
     except Exception as e:
         print(f"Error while starting Docker containers: {e}")
 
-def initialize_camera(camera_index=0, width=1920, height=1080):
-    """Initialize the camera with the given index and resolution."""
-    global camera
+def initialize_camera():
+    """Ensure Picamera2 is properly initialized before use."""
+    global picam2
     with camera_lock:
-        if camera is None or not camera.isOpened():
-            camera = cv2.VideoCapture(camera_index, cv2.CAP_MSMF)
-            camera.set(cv2.CAP_PROP_FRAME_WIDTH, width)
-            camera.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
-            actual_width = int(camera.get(cv2.CAP_PROP_FRAME_WIDTH))
-            actual_height = int(camera.get(cv2.CAP_PROP_FRAME_HEIGHT))
-            fps = camera.get(cv2.CAP_PROP_FPS)
-            print(f"Camera initialized with resolution: {actual_width}x{actual_height}, FPS: {fps}")
+        if picam2 is not None:  # If picam2 already exists, release it first
+            try:
+                picam2.close()
+                print("✅ Camera released before reinitializing.")
+            except Exception as e:
+                print(f"⚠️ Error releasing camera: {e}")
+
+        try:
+            picam2 = Picamera2()
+            config = picam2.create_preview_configuration(main={"size": (640, 360)})
+            picam2.configure(config)
+            picam2.set_controls({"FrameRate": 30})
+            time.sleep(1)  # Allow time for camera to initialize
+            picam2.start()
+            print("✅ Picamera2 initialized successfully!")
+        except RuntimeError as e:
+            print(f"⚠️ Failed to initialize camera: {e}. Another process may be using it.")
+            picam2 = None  # Reset picam2 if initialization failed
             
 def send_telegram_alert(message):
     """Send an alert via Telegram if enabled."""
@@ -150,11 +161,13 @@ def should_send_alert(predicted_label):
 
 def stop_inference():
     """Stop the camera feed by releasing the camera."""
-    global inference_running, camera
+    global inference_running, picam2
     with camera_lock:
-        if camera and camera.isOpened():
-            camera.release()
+        if picam2 is not None:
+            picam2.close()  # Properly close the Picamera2 instance
+            picam2 = None   # Reset the global variable to avoid reuse of a closed instance
             print("Camera feed and inference stopped.")
+
     inference_running = False
 
 def start_inference():
@@ -204,6 +217,7 @@ args = parser.parse_args()
 scaler = load_scaler(MODEL_DICT[DEFAULT_MODEL_TYPE]["model_dir"])
 
 start_docker_containers()
+start_inference()
 
 # Initialize Kafka producer
 producer = KafkaProducer(
@@ -213,18 +227,20 @@ producer = KafkaProducer(
 
 @app.route('/video_feed')
 def video_feed():
-    """Stream video feed."""
+    """Stream video feed from Raspberry Pi Camera using Picamera2."""
     def generate():
-        while True:
+        while inference_running:  # Ensures streaming only when inference is running
             with camera_lock:
-                success, frame = camera.read()
-            if not success:
-                break
-            # Encode the frame in JPEG format
+                frame = picam2.capture_array()  # Capture frame from Picamera2
+            
+            # Convert frame from BGR to RGB (since Picamera2 outputs BGR by default)
+            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+
+            # Encode frame to JPEG format
             _, buffer = cv2.imencode('.jpg', frame)
-            # Convert to byte array
             frame_bytes = buffer.tobytes()
-            # Yield the frame as part of a multipart response
+
+            # Yield the frame as part of a multipart HTTP response
             yield (b'--frame\r\n'
                    b'Content-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
 
@@ -258,9 +274,14 @@ def video_feed_keypoints():
         nonlocal last_emit_time, previous_posture
         while inference_running:
             with camera_lock:
-                success, frame = camera.read()
-            if not success:
-                break
+                if picam2 is None:
+                    break
+                
+                # Capture frame from Picamera2
+                frame = picam2.capture_array()
+                
+            # Convert from RGB to BGR (OpenCV default format)
+            frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
 
             # Process the frame for keypoints
             keypoints, frame_with_keypoints = extract_keypoints(frame, pose)
@@ -339,9 +360,14 @@ def video_feed_keypoints_multi():
     def generate():
         while inference_running:
             with camera_lock:
-                success, frame = camera.read()
-            if not success:
-                break
+                if picam2 is None:
+                    break
+                
+                # Capture frame from Picamera2
+                frame = picam2.capture_array()
+                
+            # Convert from RGB to BGR (OpenCV default format)
+            frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
 
             # Detect keypoints for multiple persons
             keypoints_list, frame_with_keypoints, bboxes = extract_keypoints_multi_person(frame, pose, yolo_model)
@@ -405,17 +431,16 @@ def video_feed_keypoints_multi():
 
 @app.route('/capture', methods=['GET'])
 def capture_photo():
-    """Capture a photo and save it to disk."""
+    """Capture a photo using Picamera2 and save it to disk."""
     with camera_lock:
-        success, frame = camera.read()
-    if success:
-        # Save the photo with a timestamp
         timestamp = time.strftime("%Y%m%d-%H%M%S")
-        photo_path = f"captured_photo_{timestamp}.jpg"
-        cv2.imwrite(photo_path, frame)
-        return jsonify({"message": "Photo captured successfully.", "file_path": photo_path})
-    else:
-        return jsonify({"error": "Failed to capture photo."}), 500
+        photo_path = f"/home/pi/captured_photo_{timestamp}.jpg"
+
+        try:
+            picam2.capture_file(photo_path)  # Capture the image
+            return jsonify({"message": "Photo captured successfully.", "file_path": photo_path})
+        except Exception as e:
+            return jsonify({"error": f"Failed to capture photo: {str(e)}"}), 500
     
 @app.route('/capture_predict', methods=['POST'])
 def capture_predict():
@@ -518,7 +543,8 @@ def toggle_messaging_alert():
     
 if __name__ == '__main__':
     try:
-        app.run(host='0.0.0.0', port=5000, debug=True)
+        app.run(host='0.0.0.0', port=5000, debug=False)
     finally:
         # Release the camera on shutdown
-        camera.release()
+        picam2.close()
+        picam2 = None
