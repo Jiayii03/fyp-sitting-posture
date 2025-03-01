@@ -56,7 +56,7 @@ const Sidebar = () => {
 
     try {
       const response = await fetch(
-        "http://localhost:5000/toggle_messaging_alert",
+        `${process.env.NEXT_PUBLIC_LOCAL_BACKEND_URL}/toggle_messaging_alert`,
         {
           method: "POST",
           headers: {

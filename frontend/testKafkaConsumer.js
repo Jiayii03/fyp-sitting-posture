@@ -4,7 +4,7 @@ const { Kafka } = require('kafkajs');
 // Initialize Kafka consumer
 const kafka = new Kafka({
   clientId: 'posture-consumer',
-  brokers: ['localhost:9092'],
+  brokers: [process.env.NEXT_PUBLIC_KAFKA_BROKER],
 });
 
 const consumer = kafka.consumer({ groupId: 'posture-group' });

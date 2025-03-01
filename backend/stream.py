@@ -2,7 +2,7 @@
 This script creates a video stream from the camera and serves it as a web API.
 
 To run this script, execute the following command:
-python stream.py --camera_index 1
+python stream.py --camera_index 0
 
 API Endpoints:
 - /video_feed: Streams the video feed from the camera. GET request.
@@ -509,10 +509,10 @@ def toggle_messaging_alert():
 
     if action == "enable":
         messaging_alert_enabled = True
-        return jsonify({"status": "success", "message": "Messaging alerts enabled"})
+        return jsonify({"status": "success", "message": "Messaging alerts enabled"}), 200
     elif action == "disable":
         messaging_alert_enabled = False
-        return jsonify({"status": "success", "message": "Messaging alerts disabled"})
+        return jsonify({"status": "success", "message": "Messaging alerts disabled"}), 200
     else:
         return jsonify({"status": "error", "message": "Invalid action. Use 'enable' or 'disable'."}), 400
     

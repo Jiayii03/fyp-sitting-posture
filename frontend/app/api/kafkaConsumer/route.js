@@ -3,7 +3,7 @@ import { Kafka } from "kafkajs";
 // Initialize Kafka instance
 const kafka = new Kafka({
   clientId: "posture-consumer",
-  brokers: ["localhost:9092"],
+  brokers: [process.env.NEXT_PUBLIC_KAFKA_BROKER],
 });
 
 // Create consumer for posture events
