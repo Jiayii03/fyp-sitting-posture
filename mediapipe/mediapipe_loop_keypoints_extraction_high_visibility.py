@@ -32,10 +32,14 @@ augmented_dir = "C:/Users/User/Documents/UNM_CSAI/UNM_current_modules/COMP3025_I
 keypoints_dir = "C:/Users/User/Documents/UNM_CSAI/UNM_current_modules/COMP3025_Individual_Dissertation/dev/datasets/keypoints/mediapipe"
 keypoints_only_dir = "C:/Users/User/Documents/UNM_CSAI/UNM_current_modules/COMP3025_Individual_Dissertation/dev/datasets/keypoints_only/mediapipe"
 vectors_dir = "C:/Users/User/Documents/UNM_CSAI/UNM_current_modules/COMP3025_Individual_Dissertation/dev/datasets/vectors"
+augmented_keypoints_dir = "C:/Users/User/Documents/UNM_CSAI/UNM_current_modules/COMP3025_Individual_Dissertation/dev/datasets/augmented_keypoints"
+augmented_keypoints_only_dir  = "C:/Users/User/Documents/UNM_CSAI/UNM_current_modules/COMP3025_Individual_Dissertation/dev/datasets/augmented_keypoints_only"
 output_csv = os.path.join(vectors_dir, "augmented_xy_filtered_keypoints_vectors_mediapipe.csv")
 
 if args.augmented:
     raw_dir = augmented_dir
+    keypoints_dir = augmented_keypoints_dir
+    keypoints_only_dir = augmented_keypoints_only_dir
 else:
     raw_dir = raw_dir   
 
@@ -105,6 +109,13 @@ for class_name in class_dirs:
     # Create class directories if they don't exist
     for directory in [keypoints_dir, keypoints_only_dir]:
         class_dir = os.path.join(directory, class_name)
+        
+        # if class directory already exists, delete it
+        if os.path.exists(class_dir):
+            for file in os.listdir(class_dir):
+                os.remove(os.path.join(class_dir, file))
+            os.rmdir(class_dir)
+        
         if not os.path.exists(class_dir):
             os.makedirs(class_dir)
     

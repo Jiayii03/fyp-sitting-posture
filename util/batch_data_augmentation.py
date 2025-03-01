@@ -5,7 +5,7 @@ The augmentation pipeline includes horizontal flip, rotation, and shift. The num
 The maximum number of augmentations can be adjusted by changing the max_augmentations variable.
 
 Change the input and output directories to process images from a different directory.
-run python batch_data_augmentation.py
+python batch_data_augmentation.py
 """
 
 import albumentations as A
@@ -19,9 +19,9 @@ import random
 def create_augmenter():
     """Create an augmentation pipeline"""
     transform = A.Compose([
-        A.HorizontalFlip(p=0.5),  # Apply horizontal flip with a 50% chance
-        A.Rotate(limit=20, p=0.5),  # Apply rotation with a 50% chance
-        A.ShiftScaleRotate(shift_limit=0.20, scale_limit=0, rotate_limit=0, p=0.5),  # Apply shift only, 50% chance
+        A.HorizontalFlip(p=0.2),  # Apply horizontal flip with a 50% chance
+        # A.Rotate(limit=20, p=0.5),  # Apply rotation with a 50% chance
+        A.ShiftScaleRotate(shift_limit=0.15, scale_limit=0, rotate_limit=0, p=0.8),  # Apply shift only, 50% chance
     ])
     return transform
 
@@ -70,8 +70,15 @@ def process_directory(input_dir, output_base_dir, max_augmentations=3):
 
             print(f"\nProcessing class: {class_dir.name}")
             
-            # Create output directory for this class
+            # if there's existing output directory, delete it
             output_dir = output_base_dir / class_dir.name
+            if output_dir.exists():
+                print(f"Deleting existing output directory: {output_dir}")
+                for file in output_dir.iterdir():
+                    file.unlink()
+                output_dir.rmdir()
+            
+            # Create output directory for this class
             output_dir.mkdir(parents=True, exist_ok=True)
             
             # Process each image in the class directory

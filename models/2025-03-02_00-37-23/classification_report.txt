@@ -1,0 +1,12 @@
+              precision    recall  f1-score   support
+
+crossed_legs       0.93      0.94      0.94       355
+      proper       0.84      0.85      0.85       324
+   reclining       0.93      0.92      0.92       298
+   slouching       0.88      0.87      0.88       267
+
+    accuracy                           0.90      1244
+   macro avg       0.90      0.89      0.90      1244
+weighted avg       0.90      0.90      0.90      1244
+
+*Trained with augmented dataset (A.HorizontalFlip(p=0.2), A.ShiftScaleRotate(shift_limit=0.15, scale_limit=0, rotate_limit=0, p=0.8))
