@@ -10,3 +10,4 @@ crossed_legs       0.93      0.94      0.94       355
 weighted avg       0.90      0.90      0.90      1244
 
 *Trained with augmented dataset (A.HorizontalFlip(p=0.2), A.ShiftScaleRotate(shift_limit=0.15, scale_limit=0, rotate_limit=0, p=0.8))
+**Duplicated training dataset

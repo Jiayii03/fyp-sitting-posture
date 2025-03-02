@@ -1,0 +1,12 @@
+              precision    recall  f1-score   support
+
+crossed_legs       0.99      0.99      0.99       159
+      proper       0.93      0.92      0.93       186
+   reclining       0.97      0.95      0.96       149
+   slouching       0.94      0.97      0.96       151
+
+    accuracy                           0.96       645
+   macro avg       0.96      0.96      0.96       645
+weighted avg       0.96      0.96      0.96       645
+
+**Duplicated training set
