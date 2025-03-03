@@ -38,6 +38,7 @@ sys.path.append(PROJECT_ROOT)
 
 from inference.pipeline import extract_keypoints, predict_posture
 from inference.pipeline_multi import extract_keypoints_multi_person
+from helpers.recommendation_generator import get_recommendation
 
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})
@@ -57,8 +58,8 @@ MODEL_DICT = {
 }
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 CHAT_ID = os.getenv("CHAT_ID")
-BAD_POSTURE_FRAME_THRESHOLD = 150
-ALERT_COOLDOWN = 10
+BAD_POSTURE_FRAME_THRESHOLD = 600 # 10 seconds
+ALERT_COOLDOWN = 30 # seconds
 
 # Global variables
 model_cache = {}
@@ -105,17 +106,46 @@ def initialize_camera(camera_index=0, width=1920, height=1080):
             fps = camera.get(cv2.CAP_PROP_FPS)
             print(f"Camera initialized with resolution: {actual_width}x{actual_height}, FPS: {fps}")
             
-def send_telegram_alert(message):
-    """Send an alert via Telegram if enabled."""
+def send_telegram_alert(message, predicted_label=None, detection_count=0):
+    """Spawn a background thread to send a Telegram alert with a deepseek recommendation."""
     if messaging_alert_enabled:
-        url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
-        payload = {"chat_id": CHAT_ID, "text": message}
-        response = requests.post(url, json=payload)
-        if response.status_code == 200:
-            print("✅ Telegram alert sent successfully!")
-        else:
-            print(f"❌ Failed to send Telegram alert: {response.text}")
-            
+        # Start a background thread to process the alert
+        thread = threading.Thread(
+            target=_send_telegram_alert_worker, 
+            args=(message, predicted_label, detection_count)
+        )
+        thread.daemon = True  # Optional: allows program exit even if thread is running
+        thread.start()
+
+def _send_telegram_alert_worker(message, predicted_label, detection_count):
+    """Worker function that performs the blocking deepseek call and sends the alert."""
+    if predicted_label is not None:
+        # Build a formatted header for the deepseek recommendation section
+        deepseek_header = (
+            "*DeepSeek Recommendation:*\n"
+        )
+        # Generate recommendation in the background thread
+        recommendation = get_recommendation(predicted_label, detection_count)
+        # Combine the header and recommendation
+        formatted_recommendation = deepseek_header + recommendation
+        # Append the formatted recommendation block to the main message
+        message += f"\n\n{formatted_recommendation}"
+    
+    # Example professional alert header (if you want to include it in the message)
+    professional_message = (
+        "**🚨 Posture Alert 🚨**\n"
+        f"**Detected Issue:** *{predicted_label}*\n\n"
+        f"{message}"
+    )
+    
+    url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
+    payload = {"chat_id": CHAT_ID, "text": professional_message, "parse_mode": "Markdown"}
+    response = requests.post(url, json=payload)
+    if response.status_code == 200:
+        print("✅ Telegram alert sent successfully!")
+    else:
+        print(f"❌ Failed to send Telegram alert: {response.text}")
+        
 def reset_alert_state():
     """Reset all global alert state variables."""
     alert_state["last_alert_time"] = 0
@@ -253,9 +283,10 @@ def video_feed_keypoints():
     
     last_emit_time = 0
     previous_posture = None
+    detection_counts = {} 
 
     def generate():
-        nonlocal last_emit_time, previous_posture
+        nonlocal last_emit_time, previous_posture, detection_counts
         while inference_running:
             with camera_lock:
                 success, frame = camera.read()
@@ -266,39 +297,49 @@ def video_feed_keypoints():
             keypoints, frame_with_keypoints = extract_keypoints(frame, pose)
 
             if keypoints is not None:
-                predicted_label, confidence_scores = predict_posture(model, keypoints, scaler, CLASS_LABELS, sensitivity_adjustments=sensitivity_adjustments)
+                predicted_label, confidence_scores = predict_posture(
+                    model, keypoints, scaler, CLASS_LABELS,
+                    sensitivity_adjustments=sensitivity_adjustments
+                )
                 
                 current_time = time.time()
+                # When posture changes and enough time has passed, log the event
                 if predicted_label != previous_posture and (current_time - last_emit_time) > 1:
                     previous_posture = predicted_label
                     last_emit_time = current_time
-
-                    # Send posture event to Kafka
                     producer.send('posture_events', {
                         'posture': predicted_label,
                         'message': f"Posture changed to: {predicted_label}"
                     })
                     print(f"📤 Sent posture event: Posture changed to: {predicted_label}")
 
+                # Check if an alert should be sent for the current posture
                 if should_send_alert(predicted_label):
-                    send_telegram_alert(f"⚠️ Alert: Detected bad posture - {predicted_label}")
+                    # Get the current detection count for this posture (default to 0)
+                    count = detection_counts.get(predicted_label, 0)
+                    # Send alert with the current detection count
+                    send_telegram_alert(
+                        f"⚠️ Alert: Detected bad posture - {predicted_label}",
+                        predicted_label,
+                        count
+                    )
+                    # Increment the detection count for this posture
+                    detection_counts[predicted_label] = count + 1
+                    
                     producer.send('alert_events', {
                         'message': f"Detected bad posture - {predicted_label}"
                     })
                     print(f"Sent alert: Detected bad posture - {predicted_label}")
 
-                # Set color and feedback text
+                # Set display color and feedback text
                 color = (0, 255, 0) if predicted_label == "proper" else (0, 0, 255)
                 feedback_text = f"Posture: {predicted_label}"
+                cv2.putText(frame_with_keypoints, feedback_text, (10, 30),
+                            cv2.FONT_HERSHEY_SIMPLEX, 1, color, 2)
 
-                # Draw feedback on the frame
-                cv2.putText(frame_with_keypoints, feedback_text, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, color, 2)
-
-            # Encode the frame as JPEG
+            # Encode the frame as JPEG and yield for streaming
             _, buffer = cv2.imencode('.jpg', frame_with_keypoints)
             frame_bytes = buffer.tobytes()
-
-            # Yield the frame for the video feed
             yield (b'--frame\r\n'
                    b'Content-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
 
@@ -379,7 +420,7 @@ def video_feed_keypoints_multi():
                         print(f"📤 Sent posture event: {log_message}")
                         
                     if should_send_alert(predicted_label):
-                        send_telegram_alert(f"⚠️ Alert: Detected bad posture - {predicted_label} - {person_id}")
+                        send_telegram_alert(f"⚠️ Alert: Detected bad posture - {predicted_label} - {person_id}", predicted_label)
                         producer.send('alert_events', {
                             'message': f"Detected bad posture - {predicted_label} [**{person_id}**]"
                         })
