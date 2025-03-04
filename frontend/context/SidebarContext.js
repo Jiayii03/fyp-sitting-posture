@@ -13,7 +13,6 @@ const DEFAULT_SETTINGS = {
     crossed_legs: 100,
     slouching: 100,
   },
-  isAlertEnabled: false
 };
 
 // Create the context
@@ -23,6 +22,7 @@ const SidebarContext = createContext();
 export const SidebarProvider = ({ children }) => {
   // Initialize with default settings first
   const [settings, setSettings] = useState(DEFAULT_SETTINGS);
+  const [isAlertEnabled, setIsAlertEnabled] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
 
   // Load from localStorage after mount
@@ -54,10 +54,6 @@ export const SidebarProvider = ({ children }) => {
     setSettings(prev => ({ ...prev, sensitivity: newSensitivity }));
   };
 
-  const setIsAlertEnabled = (enabled) => {
-    setSettings(prev => ({ ...prev, isAlertEnabled: enabled }));
-  };
-
   // Don't render children until client-side localStorage is checked
   if (!isInitialized) {
     return null;
@@ -72,7 +68,7 @@ export const SidebarProvider = ({ children }) => {
         setModelType,
         sensitivity: settings.sensitivity,
         setSensitivity,
-        isAlertEnabled: settings.isAlertEnabled,
+        isAlertEnabled,
         setIsAlertEnabled,
       }}
     >

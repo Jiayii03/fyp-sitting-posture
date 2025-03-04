@@ -20,6 +20,10 @@ MODEL_DICT = {
     "ANN_50e_lr_1e-03_acc_76": {
         "model_dir": "../models/2024-11-24_00-04-05",
         "model_path": "../models/2024-11-24_00-04-05/epochs_50_lr_1e-03_acc_76.pth",
+    },
+    "ANN_300e_lr_1e-03_acc_8963": {
+        "model_dir": "../models/2025-03-02_00-37-23",
+        "model_path": "../models/2025-03-02_00-37-23/epochs_300_lr_1e-03_wd_5e-03_acc_8963.pth",
     }
 }
 

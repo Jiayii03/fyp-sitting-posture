@@ -6,7 +6,7 @@ import { useSidebarSettings } from "@/context/SidebarContext";
 import { useLog } from "@/context/LoggingContext";
 import toast from "react-hot-toast";
 
-const MODEL_TYPES = ["ANN_150e_lr_1e-03_acc_8298", "ANN_50e_lr_1e-03_acc_76"];
+const MODEL_TYPES = ["ANN_150e_lr_1e-03_acc_8298", "ANN_50e_lr_1e-03_acc_76", "ANN_300e_lr_1e-03_acc_8963"];
 
 const Sidebar = () => {
   const [isOpen, setIsOpen] = useState(false);

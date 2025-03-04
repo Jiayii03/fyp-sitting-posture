@@ -61,7 +61,7 @@ def video_feed_keypoints():
     }
     model_type = request.args.get('model_type', DEFAULT_MODEL_TYPE)
     model = model_manager.load_model(model_type)
-    scaler = model_manager.load_scaler(MODEL_DICT[DEFAULT_MODEL_TYPE]["model_dir"])
+    scaler = model_manager.load_scaler(MODEL_DICT[model_type]["model_dir"])
         
     last_emit_time = 0
     
