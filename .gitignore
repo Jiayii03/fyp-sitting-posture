@@ -1,2 +1,3 @@
 /yolo/models/*
 .env
+**/__pycache__/
