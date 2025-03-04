@@ -93,7 +93,7 @@ def start_docker_containers():
     except Exception as e:
         print(f"Error while starting Docker containers: {e}")
 
-def initialize_camera(camera_index=0, width=1920, height=1080):
+def python (camera_index=0, width=1920, height=1080):
     """Initialize the camera with the given index and resolution."""
     global camera
     with camera_lock:
@@ -191,7 +191,7 @@ def start_inference():
     """Start the camera feed again with the specified resolution."""
     send_telegram_alert("✅ Inference started: Camera feed is now active.")
     global inference_running
-    initialize_camera()
+    python ()
     inference_running = True
     print("Camera feed and inference started.")
 

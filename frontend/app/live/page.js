@@ -31,6 +31,19 @@ function Page() {
     setIsLoggingOpen(!isLoggingOpen);
   };
 
+  const useDebounce = (value, delay) => {
+    const [debouncedValue, setDebouncedValue] = useState(value);
+
+    useEffect(() => {
+      const handler = setTimeout(() => setDebouncedValue(value), delay);
+      return () => clearTimeout(handler);
+    }, [value, delay]);
+
+    return debouncedValue;
+  };
+  
+  const debouncedSensitivity = useDebounce(sensitivity, 500); // 500ms delay
+
   const toggleCameraFeed = async () => {
     const action = isCameraFeedActive ? "stop" : "start";
     try {
@@ -65,9 +78,26 @@ function Page() {
     addLog(`Alerts are ${isAlertEnabled ? "enabled" : "disabled"}`);
   }, [isAlertEnabled]);
 
-  useEffect(() => { 
-    setVideoFeedURL(`${detectionMode === "single" ? VIDEO_FEED_KEYPOINTS_URL : VIDEO_FEED_KEYPOINTS_MULTI_URL}?model_type=${modelType}&reclining=${(sensitivity.reclining)/100}&crossed_legs=${(sensitivity.crossed_legs)/100}&slouching=${(sensitivity.slouching)/100}`);
-  }, [detectionMode, modelType, sensitivity, isAlertEnabled]);
+  useEffect(() => {
+    const ts = Date.now();
+    setVideoFeedURL(
+      `${
+        detectionMode === "single"
+          ? VIDEO_FEED_KEYPOINTS_URL
+          : VIDEO_FEED_KEYPOINTS_MULTI_URL
+      }?model_type=${modelType}&reclining=${
+        sensitivity.reclining / 100
+      }&crossed_legs=${sensitivity.crossed_legs / 100}&slouching=${
+        sensitivity.slouching / 100
+      }&ts=${ts}`
+    );
+  }, [
+    detectionMode,
+    modelType,
+    debouncedSensitivity,
+    isAlertEnabled,
+    isCameraFeedActive,
+  ]);
 
   return (
     <div className="flex h-screen">

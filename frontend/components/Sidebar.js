@@ -69,7 +69,6 @@ const Sidebar = () => {
       const result = await response.json();
       if (result.status === "success") {
         toast.success(result.message);
-        addLog(result.message);
         setIsAlertEnabled(!isAlertEnabled);
       } else {
         toast.error(result.message);

@@ -1,9 +1,10 @@
-import { Kafka } from "kafkajs";
+import { Kafka, logLevel } from "kafkajs";
 
 // Initialize Kafka instance
 const kafka = new Kafka({
   clientId: "posture-consumer",
   brokers: [process.env.NEXT_PUBLIC_KAFKA_BROKER],
+  logLevel: logLevel.NOTHING,
 });
 
 // Create consumer for posture events
@@ -24,6 +25,7 @@ export async function GET(req) {
         eachMessage: async ({ message }) => {
           const event = JSON.parse(message.value.toString());
           controller.enqueue(`data: ${JSON.stringify({ type: "posture", ...event })}\n\n`);
+          console.log("Consumed posture event:", event);
         },
       });
 
@@ -32,6 +34,7 @@ export async function GET(req) {
         eachMessage: async ({ message }) => {
           const event = JSON.parse(message.value.toString());
           controller.enqueue(`data: ${JSON.stringify({ type: "alert", ...event })}\n\n`);
+          console.log("Consumed alert event:", event);
         },
       });
     },
