@@ -29,7 +29,6 @@ def video_feed():
     """Stream video feed."""
     def generate():
         print("Starting video feed...")
-        print(video_manager.camera)
         while True:
             success, frame = video_manager.read_frame()
             if not success:

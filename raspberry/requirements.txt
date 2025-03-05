@@ -11,3 +11,6 @@ scikit-learn
 mediapipe
 importlib-metadata
 pandas
+matplotlib
+picamera2
+libcap-dev

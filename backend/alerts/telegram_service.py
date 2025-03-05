@@ -25,7 +25,7 @@ class TelegramService:
                 "*Posture Recommendation:*\n"
             )
             # Generate recommendation in the background thread
-            recommendation = self.recommend_service.get_recommendation(predicted_label, detection_count)
+            # recommendation = self.recommend_service.get_recommendation(predicted_label, detection_count)
             # Combine the header and recommendation
             formatted_recommendation = deepseek_header + recommendation
             # Append the formatted recommendation block to the main message

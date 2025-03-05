@@ -19,13 +19,13 @@ class KafkaService:
         """Start Kafka and Zookeeper containers if they are not already running."""
         try:
             # Check if Kafka container is running
-            kafka_running = subprocess.run(["docker", "ps", "-q", "-f", "name=kafka"], capture_output=True, text=True).stdout.strip()
-            zookeeper_running = subprocess.run(["docker", "ps", "-q", "-f", "name=zookeeper"], capture_output=True, text=True).stdout.strip()
+            kafka_running = subprocess.run(["sudo", "docker", "ps", "-q", "-f", "name=kafka"], capture_output=True, text=True).stdout.strip()
+            zookeeper_running = subprocess.run(["sudo", "docker", "ps", "-q", "-f", "name=zookeeper"], capture_output=True, text=True).stdout.strip()
 
             if not kafka_running or not zookeeper_running:
                 print("Kafka or Zookeeper container not running. Starting Kafka and Zookeeper containers...")
                 # Run Docker Compose to start the containers
-                subprocess.run(["docker-compose", "-f", "docker-compose.yml", "up", "-d"], check=True)
+                subprocess.run(["sudo", "docker", "compose", "-f", "docker-compose.yml", "up", "-d"], check=True)
 
                 # Wait for Kafka and Zookeeper to become available
                 time.sleep(10) # Wait a few seconds to allow Kafka and Zookeeper to initialize
