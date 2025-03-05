@@ -12,3 +12,16 @@
 
 5. Check latency between laptop and raspberry pi:
 `ping pi -n 10`
+
+## Setup
+
+If `import libcamera` fails, run
+```bash
+sudo apt-get update
+sudo apt-get install libcamera-apps python3-libcamera
+```
+
+To bind system-wide-packages, run
+```bash
+sed -i 's/include-system-site-packages = false/include-system-site-packages = true/' myenv/pyvenv.cfg
+```
