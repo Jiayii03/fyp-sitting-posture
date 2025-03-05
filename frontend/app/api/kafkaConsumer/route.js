@@ -11,12 +11,16 @@ const kafka = new Kafka({
 export async function GET(req) {
   const postureConsumer = kafka.consumer({ groupId: "posture-posture-group" });
   const alertConsumer = kafka.consumer({ groupId: "posture-alert-group" });
+  const testConsumer = kafka.consumer({ groupId: "posture-test-group" });
 
+  // Connect consumers
   await postureConsumer.connect();
   await alertConsumer.connect();
+  await testConsumer.connect();
 
   await postureConsumer.subscribe({ topic: "posture_events", fromBeginning: false });
   await alertConsumer.subscribe({ topic: "alert_events", fromBeginning: false });
+  await testConsumer.subscribe({ topic: "test_events", fromBeginning: false });
 
   const readableStream = new ReadableStream({
     start(controller) {
@@ -35,6 +39,15 @@ export async function GET(req) {
           const event = JSON.parse(message.value.toString());
           controller.enqueue(`data: ${JSON.stringify({ type: "alert", ...event })}\n\n`);
           console.log("Consumed alert event:", event);
+        },
+      });
+
+      // Run consumer for test events
+      testConsumer.run({
+        eachMessage: async ({ message }) => {
+          const event = JSON.parse(message.value.toString());
+          controller.enqueue(`data: ${JSON.stringify({ type: "test", ...event })}\n\n`);
+          console.log("Consumed test event:", event);
         },
       });
     },

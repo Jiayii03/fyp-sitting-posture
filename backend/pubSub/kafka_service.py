@@ -25,7 +25,7 @@ class KafkaService:
             if not kafka_running or not zookeeper_running:
                 print("Kafka or Zookeeper container not running. Starting Kafka and Zookeeper containers...")
                 # Run Docker Compose to start the containers
-                subprocess.run(["docker-compose", "-f", "docker-compose.yml", "up", "-d"], check=True)
+                subprocess.run(["docker-compose", "-f", "pubSub/docker-compose.yml", "up", "-d"], check=True)
 
                 # Wait for Kafka and Zookeeper to become available
                 time.sleep(10) # Wait a few seconds to allow Kafka and Zookeeper to initialize
@@ -43,5 +43,10 @@ class KafkaService:
         
     def send_alert_event(self, message):
         self.producer.send('alert_events', {
+            'message': message
+        })
+        
+    def send_test_event(self, message):
+        self.producer.send('test_events', {
             'message': message
         })

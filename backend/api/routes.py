@@ -329,3 +329,13 @@ def toggle_messaging_alert():
 def is_messaging_enabled():
     """Check if messaging alerts are enabled."""
     return jsonify({"messaging_enabled": alert_manager.messaging_enabled})
+
+@api_bp.route('/test_kafka_service', methods=['GET'])
+def test_kafka_service():
+    try:
+        # Send a test posture event. Adjust the parameters as needed.
+        kafka_service.send_test_event("Test event from backend.")
+        print(f"Sent test kafka event")
+        return jsonify({"status": "success", "message": "Test Kafka event sent."}), 200
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
