@@ -324,3 +324,8 @@ def toggle_messaging_alert():
         return jsonify({"status": "success", "message": "Messaging alerts disabled"}), 200
     else:
         return jsonify({"status": "error", "message": "Invalid action. Use 'enable' or 'disable'."}), 400
+    
+@api_bp.route('/is_messaging_enabled', methods=['GET'])
+def is_messaging_enabled():
+    """Check if messaging alerts are enabled."""
+    return jsonify({"messaging_enabled": alert_manager.messaging_enabled})

@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect } from "react";
 
-const STORAGE_KEY = 'sidebarSettings';
+const STORAGE_KEY = "sidebarSettings";
 
 // Default settings
 const DEFAULT_SETTINGS = {
@@ -25,6 +25,21 @@ export const SidebarProvider = ({ children }) => {
   const [isAlertEnabled, setIsAlertEnabled] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
 
+  // function to call GET request for is_messaging_enabled
+  const checkAlertEnabled = async () => {
+    const response = await fetch(
+      `${process.env.NEXT_PUBLIC_LOCAL_BACKEND_URL}/is_messaging_enabled`,
+      {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    );
+    const data = await response.json();
+    setIsAlertEnabled(data.messaging_enabled);
+  };
+
   // Load from localStorage after mount
   useEffect(() => {
     const savedSettings = localStorage.getItem(STORAGE_KEY);
@@ -32,6 +47,7 @@ export const SidebarProvider = ({ children }) => {
       setSettings(JSON.parse(savedSettings));
     }
     setIsInitialized(true);
+    checkAlertEnabled();
   }, []);
 
   // Save to localStorage whenever settings change, but only after initial load
@@ -43,15 +59,15 @@ export const SidebarProvider = ({ children }) => {
 
   // Create individual setters that update the entire settings object
   const setDetectionMode = (mode) => {
-    setSettings(prev => ({ ...prev, detectionMode: mode }));
+    setSettings((prev) => ({ ...prev, detectionMode: mode }));
   };
 
   const setModelType = (model) => {
-    setSettings(prev => ({ ...prev, modelType: model }));
+    setSettings((prev) => ({ ...prev, modelType: model }));
   };
 
   const setSensitivity = (newSensitivity) => {
-    setSettings(prev => ({ ...prev, sensitivity: newSensitivity }));
+    setSettings((prev) => ({ ...prev, sensitivity: newSensitivity }));
   };
 
   // Don't render children until client-side localStorage is checked
@@ -81,7 +97,7 @@ export const SidebarProvider = ({ children }) => {
 export const useSidebarSettings = () => {
   const context = useContext(SidebarContext);
   if (!context) {
-    throw new Error('useSidebarSettings must be used within a SidebarProvider');
+    throw new Error("useSidebarSettings must be used within a SidebarProvider");
   }
   return context;
 };
