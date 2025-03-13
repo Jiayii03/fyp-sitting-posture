@@ -3,6 +3,8 @@ import torch
 import torch.nn.functional as F
 import numpy as np
 import cv2
+import os
+import tensorflow as tf
 
 needed_landmarks = [
     mp.solutions.pose.PoseLandmark.NOSE,
@@ -36,12 +38,104 @@ class PostureDetector:
         self.yolo_model = self._load_yolo_model()
         self.needed_landmarks = needed_landmarks
         self.custom_connections = custom_connections
+        self.input_size = (416, 416)
         
     def _load_yolo_model(self):
-        yolo_model_path = "../models/yolo-human-detection/yolov5n.pt"
-        model = torch.hub.load('ultralytics/yolov5', 'custom', path=yolo_model_path, force_reload=False)
-        model.classes = [0]  # Only detect persons
-        return model
+        """Load the YOLO model using TensorFlow Lite for better performance on Raspberry Pi"""
+        # Path to the TFLite model file
+        tflite_model_path = "../models/yolo-human-detection/yolov5n-fp16.tflite"
+        
+        # If TFLite model doesn't exist, inform the user
+        if not os.path.exists(tflite_model_path):
+            print(f"TFLite model not found at {tflite_model_path}. Please convert the PyTorch model first.")
+            print("You can use the export script from YOLOv5 repository:")
+            print("python export.py --weights ../models/yolo-human-detection/yolov5n.pt --include tflite")
+            return None
+        
+        interpreter = tf.lite.Interpreter(model_path=tflite_model_path)
+        interpreter.allocate_tensors()
+        
+        # Get input and output details
+        self.input_details = interpreter.get_input_details()
+        self.output_details = interpreter.get_output_details()
+        
+        return interpreter
+    
+    def _process_tflite_output(self, outputs, img_shape, conf_threshold=0.25, nms_threshold=0.45):
+        """Process TFLite YOLO output to get bounding boxes for persons"""
+        height, width = img_shape[:2]
+        boxes = []
+        confidences = []
+        
+        # Inspect the output to understand its format
+        # YOLOv5 TFLite outputs can vary in format
+        output = outputs[0]  # Usually the first output tensor contains detection results
+        
+        if len(output.shape) == 3:  # Format [1, n, 85]
+            for detection in output[0]:
+                # Extract box data - format is usually [x, y, w, h, obj_conf, class1_conf, class2_conf, ...]
+                if len(detection) < 6:  # Need at least x,y,w,h,obj_conf,class1_conf
+                    continue
+                    
+                # Get confidence and class
+                confidence = float(detection[4])  # Object confidence
+                
+                # If there are multiple classes
+                if len(detection) > 5:
+                    class_scores = detection[5:]
+                    class_id = np.argmax(class_scores)
+                    class_conf = float(class_scores[class_id])
+                    # Combined confidence
+                    score = confidence * class_conf
+                else:
+                    # Only one class (person)
+                    class_id = 0
+                    score = confidence
+                
+                # Filter by confidence and class (person = 0)
+                if score > conf_threshold and class_id == 0:
+                    # YOLOv5 outputs normalized coordinates [cx, cy, w, h]
+                    cx, cy, w, h = detection[0:4]
+                    
+                    # Convert to corner format and scale to image size
+                    x1 = int((cx - w/2) * width)
+                    y1 = int((cy - h/2) * height)
+                    x2 = int((cx + w/2) * width)
+                    y2 = int((cy + h/2) * height)
+                    
+                    # Ensure coordinates are within image bounds
+                    x1 = max(0, x1)
+                    y1 = max(0, y1)
+                    x2 = min(width, x2)
+                    y2 = min(height, y2)
+                    
+                    # Add to lists for NMS
+                    boxes.append([x1, y1, x2-x1, y2-y1])  # [x, y, w, h]
+                    confidences.append(score)
+        
+        # Apply non-maximum suppression to remove overlapping boxes
+        if boxes:
+            indices = cv2.dnn.NMSBoxes(boxes, confidences, conf_threshold, nms_threshold)
+            
+            result = []
+            for i in indices:
+                # Handle both OpenCV 3.x and 4.x return types
+                if isinstance(i, (list, tuple, np.ndarray)):
+                    i = i[0]
+                    
+                box = boxes[i]
+                x, y, w, h = box
+                result.append({
+                    'x1': x,
+                    'y1': y,
+                    'x2': x + w,
+                    'y2': y + h,
+                    'confidence': confidences[i]
+                })
+            
+            return result
+        
+        return []  # Return empty list if no detections
         
     def extract_keypoints(self, image_input, pose_model, visibility_threshold=0.65):
         """
@@ -120,7 +214,7 @@ class PostureDetector:
 
         return keypoints.flatten(), image
         
-    def extract_keypoints_multi_person(self, image_input, pose_model, yolo_model, confidence_threshold=0.30, visibility_threshold=0.65):
+    def extract_keypoints_multi_person(self, image_input, pose_model, confidence_threshold=0.30, visibility_threshold=0.65):
         """
         Extract keypoints for multiple persons using YOLO for detection and Mediapipe for pose estimation.
 
@@ -143,115 +237,135 @@ class PostureDetector:
         if image is None:
             raise ValueError("Invalid image input. Ensure the file path or frame is correct.")
 
-        image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        height, width = image.shape[:2]
+        if self.yolo_model is None:
+            raise ValueError("YOLO model not loaded. Please convert the PyTorch model to TFLite first.")
 
-        # YOLO detection
-        results = yolo_model(image_rgb)
-        person_detections = results.pandas().xyxy[0]
-
+        # Prepare image for TFLite (resize, normalize, add batch dimension)
+        input_shape = self.input_details[0]['shape'][1:3]  # Get expected input shape (height, width)
+        input_tensor = cv2.resize(image, (input_shape[1], input_shape[0]))
+        input_tensor = input_tensor.astype(np.float32) / 255.0  # Normalize to [0,1]
+        input_tensor = np.expand_dims(input_tensor, axis=0)  # Add batch dimension
+        
+        # Set the input tensor
+        self.yolo_model.set_tensor(self.input_details[0]['index'], input_tensor)
+        
+        # Run inference
+        self.yolo_model.invoke()
+        
+        # Get output tensors
+        outputs = []
+        for output_detail in self.output_details:
+            output_data = self.yolo_model.get_tensor(output_detail['index'])
+            outputs.append(output_data)
+        
+        # Process the output to get bounding boxes
+        detections = self._process_tflite_output(outputs, image.shape, conf_threshold=confidence_threshold)
+        
         keypoints_list = []
         bboxes = []
         person = 1
-        for _, detection in person_detections.iterrows():
-            x_min, y_min, x_max, y_max, confidence, class_id, name = detection
+        
+        for detection in detections:
+            x_min, y_min = detection['x1'], detection['y1']
+            x_max, y_max = detection['x2'], detection['y2']
+            confidence = detection['confidence']
+            
+            bboxes.append((x_min, y_min, x_max, y_max))  # Save bounding box for later use
 
-            # Ensure the detected object is a person
-            if name == "person" and confidence > confidence_threshold:
-                x_min, y_min, x_max, y_max = int(x_min), int(y_min), int(x_max), int(y_max)
-                bboxes.append((x_min, y_min, x_max, y_max))  # Save bounding box for later use
+            # Draw bounding box
+            cv2.rectangle(image, (x_min, y_min), (x_max, y_max), (0, 255, 0), 2)
+            cv2.putText(
+                image,
+                f"Person {person}: {confidence:.2f}",
+                (x_min, y_min - 10),    
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.7,
+                (0, 255, 0),
+                2
+            )
 
-                # Draw bounding box
-                cv2.rectangle(image, (x_min, y_min), (x_max, y_max), (0, 255, 0), 2)
-                cv2.putText(
-                    image,
-                    f"Person {person}: {confidence:.2f}",
-                    (x_min, y_min - 10),    
-                    cv2.FONT_HERSHEY_SIMPLEX,
-                    0.7,
-                    (0, 255, 0),
-                    2
-                )
+            # Crop the person from the image
+            cropped_person = image[y_min:y_max, x_min:x_max]
+            
+            if cropped_person.size == 0:  # Skip if cropped image is empty
+                continue
 
-                # Crop the person from the image
-                cropped_person = image[y_min:y_max, x_min:x_max]
+            # Run Mediapipe pose estimation
+            cropped_rgb = cv2.cvtColor(cropped_person, cv2.COLOR_BGR2RGB)
+            results = pose_model.process(cropped_rgb)
 
-                # Run Mediapipe pose estimation
-                cropped_rgb = cv2.cvtColor(cropped_person, cv2.COLOR_BGR2RGB)
-                results = pose_model.process(cropped_rgb)
+            if results.pose_landmarks:
+                keypoints_cropped = []  # Keypoints in the cropped coordinate system
+                keypoints_scaled = []  # Keypoints scaled to the original image size
+                landmarks = results.pose_landmarks.landmark
 
-                if results.pose_landmarks:
-                    keypoints_cropped = []  # Keypoints in the cropped coordinate system
-                    keypoints_scaled = []  # Keypoints scaled to the original image size
-                    landmarks = results.pose_landmarks.landmark
-
-                    # Extract needed landmarks
-                    for landmark_enum in self.needed_landmarks:
-                        landmark = landmarks[landmark_enum]
-                        if landmark.visibility < visibility_threshold:
-                            keypoints_cropped.append([0, 0])  # Mark low visibility points as (0, 0)
-                            keypoints_scaled.append([0, 0])  # Mark low visibility points as (0, 0)
-                        else:
-                            # Original cropped keypoints for prediction
-                            keypoints_cropped.append([landmark.x, landmark.y])
-
-                            # Scaled keypoints for visualization
-                            keypoints_scaled.append([
-                                x_min + landmark.x * (x_max - x_min),
-                                y_min + landmark.y * (y_max - y_min)
-                            ])
-
-                    # Add shoulder midpoint (both cropped and scaled versions)
-                    left_shoulder_cropped = keypoints_cropped[needed_landmarks.index(mp.solutions.pose.PoseLandmark.LEFT_SHOULDER)]
-                    right_shoulder_cropped = keypoints_cropped[needed_landmarks.index(mp.solutions.pose.PoseLandmark.RIGHT_SHOULDER)]
-                    left_shoulder_scaled = keypoints_scaled[needed_landmarks.index(mp.solutions.pose.PoseLandmark.LEFT_SHOULDER)]
-                    right_shoulder_scaled = keypoints_scaled[needed_landmarks.index(mp.solutions.pose.PoseLandmark.RIGHT_SHOULDER)]
-
-                    if all(left_shoulder_cropped) and all(right_shoulder_cropped):
-                        # Cropped shoulder midpoint
-                        shoulder_midpoint_cropped = [
-                            (left_shoulder_cropped[0] + right_shoulder_cropped[0]) / 2,
-                            (left_shoulder_cropped[1] + right_shoulder_cropped[1]) / 2
-                        ]
+                # Extract needed landmarks
+                for landmark_enum in self.needed_landmarks:
+                    landmark = landmarks[landmark_enum]
+                    if landmark.visibility < visibility_threshold:
+                        keypoints_cropped.append([0, 0])  # Mark low visibility points as (0, 0)
+                        keypoints_scaled.append([0, 0])  # Mark low visibility points as (0, 0)
                     else:
-                        shoulder_midpoint_cropped = [0, 0]
+                        # Original cropped keypoints for prediction
+                        keypoints_cropped.append([landmark.x, landmark.y])
 
-                    if all(left_shoulder_scaled) and all(right_shoulder_scaled):
-                        # Scaled shoulder midpoint
-                        shoulder_midpoint_scaled = [
-                            (left_shoulder_scaled[0] + right_shoulder_scaled[0]) / 2,
-                            (left_shoulder_scaled[1] + right_shoulder_scaled[1]) / 2
-                        ]
-                    else:
-                        shoulder_midpoint_scaled = [0, 0]
+                        # Scaled keypoints for visualization
+                        keypoints_scaled.append([
+                            x_min + landmark.x * (x_max - x_min),
+                            y_min + landmark.y * (y_max - y_min)
+                        ])
 
-                    keypoints_cropped.append(shoulder_midpoint_cropped)
-                    keypoints_scaled.append(shoulder_midpoint_scaled)
+                # Add shoulder midpoint (both cropped and scaled versions)
+                left_shoulder_cropped = keypoints_cropped[needed_landmarks.index(mp.solutions.pose.PoseLandmark.LEFT_SHOULDER)]
+                right_shoulder_cropped = keypoints_cropped[needed_landmarks.index(mp.solutions.pose.PoseLandmark.RIGHT_SHOULDER)]
+                left_shoulder_scaled = keypoints_scaled[needed_landmarks.index(mp.solutions.pose.PoseLandmark.LEFT_SHOULDER)]
+                right_shoulder_scaled = keypoints_scaled[needed_landmarks.index(mp.solutions.pose.PoseLandmark.RIGHT_SHOULDER)]
 
-                    # Add flattened cropped keypoints for prediction
-                    keypoints_cropped_flat = np.array(keypoints_cropped).flatten()
-                    keypoints_list.append(keypoints_cropped_flat)
-
-                    # Draw visualization using scaled keypoints
-                    for i, (x, y) in enumerate(keypoints_scaled):
-                        if x != 0 and y != 0:  # Only draw visible keypoints
-                            cv2.circle(image, (int(x), int(y)), 5, (0, 255, 0), -1)
-
-                    for start_idx, end_idx in self.custom_connections:
-                        start_point = keypoints_scaled[start_idx]
-                        end_point = keypoints_scaled[end_idx]
-                        if all(start_point) and all(end_point):  # Both points must be visible
-                            cv2.line(
-                                image,
-                                (int(start_point[0]), int(start_point[1])),
-                                (int(end_point[0]), int(end_point[1])),
-                                (255, 0, 0),
-                                2,
-                            )
+                if all(left_shoulder_cropped) and all(right_shoulder_cropped):
+                    # Cropped shoulder midpoint
+                    shoulder_midpoint_cropped = [
+                        (left_shoulder_cropped[0] + right_shoulder_cropped[0]) / 2,
+                        (left_shoulder_cropped[1] + right_shoulder_cropped[1]) / 2
+                    ]
                 else:
-                    keypoints_list.append(None)
-                    
-                person += 1
+                    shoulder_midpoint_cropped = [0, 0]
+
+                if all(left_shoulder_scaled) and all(right_shoulder_scaled):
+                    # Scaled shoulder midpoint
+                    shoulder_midpoint_scaled = [
+                        (left_shoulder_scaled[0] + right_shoulder_scaled[0]) / 2,
+                        (left_shoulder_scaled[1] + right_shoulder_scaled[1]) / 2
+                    ]
+                else:
+                    shoulder_midpoint_scaled = [0, 0]
+
+                keypoints_cropped.append(shoulder_midpoint_cropped)
+                keypoints_scaled.append(shoulder_midpoint_scaled)
+
+                # Add flattened cropped keypoints for prediction
+                keypoints_cropped_flat = np.array(keypoints_cropped).flatten()
+                keypoints_list.append(keypoints_cropped_flat)
+
+                # Draw visualization using scaled keypoints
+                for i, (x, y) in enumerate(keypoints_scaled):
+                    if x != 0 and y != 0:  # Only draw visible keypoints
+                        cv2.circle(image, (int(x), int(y)), 5, (0, 255, 0), -1)
+
+                for start_idx, end_idx in self.custom_connections:
+                    start_point = keypoints_scaled[start_idx]
+                    end_point = keypoints_scaled[end_idx]
+                    if all(start_point) and all(end_point):  # Both points must be visible
+                        cv2.line(
+                            image,
+                            (int(start_point[0]), int(start_point[1])),
+                            (int(end_point[0]), int(end_point[1])),
+                            (255, 0, 0),
+                            2,
+                        )
+            else:
+                keypoints_list.append(None)
+                
+            person += 1
 
         return keypoints_list, image, bboxes
         

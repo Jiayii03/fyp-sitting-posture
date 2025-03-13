@@ -148,7 +148,7 @@ def video_feed_keypoints_multi():
                 break
 
             # Detect keypoints for multiple persons
-            keypoints_list, frame_with_keypoints, bboxes = posture_detector.extract_keypoints_multi_person(frame, posture_detector.pose, posture_detector.yolo_model)
+            keypoints_list, frame_with_keypoints, bboxes = posture_detector.extract_keypoints_multi_person(frame, posture_detector.pose)
 
             if keypoints_list:
                 for i, keypoints in enumerate(keypoints_list):
