@@ -34,7 +34,7 @@ if __name__ == '__main__':
     app = create_app()
     try:
         print("Starting posture detection server...")
-        app.run(host='0.0.0.0', port=5000, debug=True)
+        app.run(host='0.0.0.0', port=5000, debug=False)
     except KeyboardInterrupt:
         print("\nShutting down gracefully...")
     except Exception as e:

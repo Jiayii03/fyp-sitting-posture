@@ -29,7 +29,6 @@ def video_feed():
     """Stream video feed."""
     def generate():
         print("Starting video feed...")
-        print(video_manager.camera)
         while True:
             success, frame = video_manager.read_frame()
             if not success:
@@ -86,7 +85,7 @@ def video_feed_keypoints():
                 if predicted_label != alert_manager.previous_posture and (current_time - last_emit_time) > 1:
                     alert_manager.previous_posture = predicted_label
                     last_emit_time = current_time
-                    kafka_service.send_posture_event(predicted_label, f"Posture changed to: {predicted_label}")
+                    # kafka_service.send_posture_event(predicted_label, f"Posture changed to: {predicted_label}")
                     print(f"📤 Sent posture event: Posture changed to: {predicted_label}")
 
                 # Check if an alert should be sent for the current posture
@@ -100,7 +99,7 @@ def video_feed_keypoints():
                     # Increment the detection count for this posture
                     alert_manager.detection_counts[predicted_label] = count + 1
                     
-                    kafka_service.send_alert_event(f"Detected bad posture - {predicted_label}")
+                    # kafka_service.send_alert_event(f"Detected bad posture - {predicted_label}")
                     print(f"Sent alert: Detected bad posture - {predicted_label}")
 
                 # Set display color and feedback text
@@ -176,7 +175,7 @@ def video_feed_keypoints_multi():
 
                         # Log the posture change
                         log_message = f"[{person_id}]: Changed to {predicted_label}"
-                        kafka_service.send_posture_event(f"{predicted_label} [**{person_id}**]", log_message)
+                        # kafka_service.send_posture_event(f"{predicted_label} [**{person_id}**]", log_message)
                         print(f"📤 Sent posture event: {log_message}")
                         
                     if alert_manager.should_send_alert(predicted_label):
@@ -197,7 +196,7 @@ def video_feed_keypoints_multi():
                         # Increment the detection count for this posture for this person
                         alert_manager.detection_counts_multi[person_id][predicted_label] = count + 1
                         
-                        kafka_service.send_alert_event(f"Detected bad posture - {predicted_label} for person {person_id}")
+                        # kafka_service.send_alert_event(f"Detected bad posture - {predicted_label} for person {person_id}")
                         print(f"Sent alert: Detected bad posture - {predicted_label} for person {person_id}")
 
                     # Set color and feedback text
@@ -333,9 +332,9 @@ def is_messaging_enabled():
 @api_bp.route('/test_kafka_service', methods=['GET'])
 def test_kafka_service():
     try:
-        # Send a test posture event. Adjust the parameters as needed.
-        kafka_service.send_test_event("Test event from backend.")
+        # kafka_service.send_test_event("Test event from backend.")
         print(f"Sent test kafka event")
         return jsonify({"status": "success", "message": "Test Kafka event sent."}), 200
     except Exception as e:
+        print(e)
         return jsonify({"status": "error", "message": str(e)}), 500

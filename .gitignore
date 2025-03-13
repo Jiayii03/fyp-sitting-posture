@@ -2,3 +2,5 @@
 .env
 **/__pycache__/
 /yolov5
+/myenv
+**/nohup.out

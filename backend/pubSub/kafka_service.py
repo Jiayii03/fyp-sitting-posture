@@ -18,17 +18,24 @@ class KafkaService:
     def start_docker_containers(self):
         """Start Kafka and Zookeeper containers if they are not already running."""
         try:
-            # Check if Kafka container is running
-            kafka_running = subprocess.run(["docker", "ps", "-q", "-f", "name=kafka"], capture_output=True, text=True).stdout.strip()
-            zookeeper_running = subprocess.run(["docker", "ps", "-q", "-f", "name=zookeeper"], capture_output=True, text=True).stdout.strip()
+            # Check if Kafka and Zookeeper containers are running
+            kafka_running = subprocess.run(["sudo", "docker", "ps", "-q", "-f", "name=kafka"], capture_output=True, text=True).stdout.strip()
+            zookeeper_running = subprocess.run(["sudo", "docker", "ps", "-q", "-f", "name=zookeeper"], capture_output=True, text=True).stdout.strip()
 
             if not kafka_running or not zookeeper_running:
                 print("Kafka or Zookeeper container not running. Starting Kafka and Zookeeper containers...")
-                # Run Docker Compose to start the containers
-                subprocess.run(["docker-compose", "-f", "pubSub/docker-compose.yml", "up", "-d"], check=True)
 
-                # Wait for Kafka and Zookeeper to become available
-                time.sleep(10) # Wait a few seconds to allow Kafka and Zookeeper to initialize
+                # Determine the correct Docker Compose command (V1 or V2)
+                compose_command = ["sudo", "docker-compose"]  # Default to V1
+                if subprocess.run(["docker", "compose", "version"], capture_output=True, text=True).returncode == 0:
+                    compose_command = ["sudo", "docker", "compose"]  # Use V2 format
+
+                # Run Docker Compose to start the containers
+                subprocess.run(compose_command + ["-f", "pubSub/docker-compose.yml", "up", "-d"], check=True)
+
+                # Wait for Kafka and Zookeeper to initialize
+                print("Waiting for Kafka and Zookeeper to fully start...")
+                time.sleep(15) 
                 print("Kafka and Zookeeper containers started successfully.")
             else:
                 print("Kafka and Zookeeper containers are already running.")

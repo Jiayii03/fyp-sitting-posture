@@ -162,7 +162,6 @@ class PostureDetector:
         results = pose_model.process(image_rgb)
 
         if not results.pose_landmarks:
-            print("No pose detected in the image.")
             return None, image
 
         keypoints = []
