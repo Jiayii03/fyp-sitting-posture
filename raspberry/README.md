@@ -47,4 +47,6 @@ sudo docker compose -f docker-compose.yml up -d
 
 Run `sudo docker ps` to see running status.
 
+>If Kafka Pub-Sub is not working, make sure to stop all Kafka services running on laptop.
+
 
