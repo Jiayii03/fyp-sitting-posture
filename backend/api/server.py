@@ -22,7 +22,8 @@ def create_app():
     alert_manager = AlertManager()
     
     # KafkaService for event messaging
-    kafka_service = KafkaService()
+    kafka_service = None
+    # kafka_service = KafkaService()
     
     # Initialize all services
     video_manager = VideoManager(
