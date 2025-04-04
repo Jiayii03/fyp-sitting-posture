@@ -339,3 +339,47 @@ def test_kafka_service():
         return jsonify({"status": "success", "message": "Test Kafka event sent."}), 200
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
+
+@api_bp.route('/start_recording', methods=['POST'])
+def start_recording():
+    """Start recording video from the camera.
+    
+    curl -X POST http://localhost:5000/start_recording
+    """
+    
+    # Make sure inference is running
+    if not video_manager.inference_running:
+        video_manager.start_inference()
+    
+    success, message = video_manager.start_recording()
+    
+    if success:
+        return jsonify({
+            "status": "success", 
+            "message": message
+        })
+    else:
+        return jsonify({
+            "status": "error", 
+            "message": message
+        }), 400
+
+@api_bp.route('/stop_recording', methods=['POST'])
+def stop_recording():
+    """Stop the current recording if one is in progress.
+    
+    curl -X POST http://localhost:5000/stop_recording
+    """
+    success, message = video_manager.stop_recording()
+    
+    if success:
+        return jsonify({
+            "status": "success", 
+            "message": message,
+            "output_file": video_manager.output_filename
+        })
+    else:
+        return jsonify({
+            "status": "error", 
+            "message": message
+        }), 400

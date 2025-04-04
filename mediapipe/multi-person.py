@@ -27,7 +27,7 @@ mp_pose = mp.solutions.pose
 pose = mp_pose.Pose(static_image_mode=True, min_detection_confidence=0.5)
 
 # Load an image
-image_path = "crowded_3.jpg"
+image_path = "../inference/images/crowded_2.jpg"
 image = cv2.imread(image_path)
 height, width = image.shape[:2]
 
