@@ -1,0 +1,227 @@
+{
+    "frame_00_09.png": {
+        "prediction": "proper",
+        "confidence_scores": {
+            "crossed_legs": 1.3850722098140977e-06,
+            "proper": 0.7560998201370239,
+            "reclining": 0.2318378984928131,
+            "slouching": 0.012060864828526974
+        }
+    },
+    "frame_00_11.png": {
+        "prediction": "proper",
+        "confidence_scores": {
+            "crossed_legs": 1.5630002963007428e-06,
+            "proper": 0.8481022715568542,
+            "reclining": 0.13663777709007263,
+            "slouching": 0.015258417464792728
+        }
+    },
+    "frame_00_12.png": {
+        "prediction": "proper",
+        "confidence_scores": {
+            "crossed_legs": 1.0692959904190502e-06,
+            "proper": 0.5426609516143799,
+            "reclining": 0.4544542133808136,
+            "slouching": 0.002883793320506811
+        }
+    },
+    "frame_00_13.png": {
+        "prediction": "proper",
+        "confidence_scores": {
+            "crossed_legs": 9.54988081502961e-07,
+            "proper": 0.5602143406867981,
+            "reclining": 0.4371967613697052,
+            "slouching": 0.002587905852124095
+        }
+    },
+    "frame_00_15.png": {
+        "prediction": "reclining",
+        "confidence_scores": {
+            "crossed_legs": 2.2919940079191292e-07,
+            "proper": 0.1621682494878769,
+            "reclining": 0.8366762399673462,
+            "slouching": 0.0011552502401173115
+        }
+    },
+    "frame_00_17.png": {
+        "prediction": "reclining",
+        "confidence_scores": {
+            "crossed_legs": 2.1688479989734333e-07,
+            "proper": 0.18686680495738983,
+            "reclining": 0.8124611973762512,
+            "slouching": 0.0006717638461850584
+        }
+    },
+    "frame_00_18.png": {
+        "prediction": "reclining",
+        "confidence_scores": {
+            "crossed_legs": 1.8753334529719723e-07,
+            "proper": 0.1547970026731491,
+            "reclining": 0.844754159450531,
+            "slouching": 0.00044864698429591954
+        }
+    },
+    "frame_00_20.png": {
+        "prediction": "reclining",
+        "confidence_scores": {
+            "crossed_legs": 5.279247616840621e-08,
+            "proper": 0.009882415644824505,
+            "reclining": 0.9900588989257812,
+            "slouching": 5.867896106792614e-05
+        }
+    },
+    "frame_00_27.png": {
+        "prediction": "proper",
+        "confidence_scores": {
+            "crossed_legs": 1.028116571433202e-06,
+            "proper": 0.8330771923065186,
+            "reclining": 0.14782647788524628,
+            "slouching": 0.01909537799656391
+        }
+    },
+    "frame_00_28.png": {
+        "prediction": "proper",
+        "confidence_scores": {
+            "crossed_legs": 6.042153586349741e-07,
+            "proper": 0.8593769669532776,
+            "reclining": 0.062028512358665466,
+            "slouching": 0.078593909740448
+        }
+    },
+    "frame_00_29.png": {
+        "prediction": "proper",
+        "confidence_scores": {
+            "crossed_legs": 6.789727535760903e-07,
+            "proper": 0.8148311972618103,
+            "reclining": 0.08185604959726334,
+            "slouching": 0.1033121719956398
+        }
+    },
+    "frame_00_32.png": {
+        "prediction": "slouching",
+        "confidence_scores": {
+            "crossed_legs": 1.5480919728361187e-06,
+            "proper": 0.090294748544693,
+            "reclining": 0.011493445374071598,
+            "slouching": 0.8982102870941162
+        }
+    },
+    "frame_00_38.png": {
+        "prediction": "slouching",
+        "confidence_scores": {
+            "crossed_legs": 1.79011494765291e-05,
+            "proper": 0.0022534490562975407,
+            "reclining": 0.0051291026175022125,
+            "slouching": 0.992599606513977
+        }
+    },
+    "frame_00_41.png": {
+        "prediction": "proper",
+        "confidence_scores": {
+            "crossed_legs": 0.19335944950580597,
+            "proper": 0.7168487310409546,
+            "reclining": 0.045876771211624146,
+            "slouching": 0.04391508921980858
+        }
+    },
+    "frame_00_45.png": {
+        "prediction": "proper",
+        "confidence_scores": {
+            "crossed_legs": 0.1201070100069046,
+            "proper": 0.7422103881835938,
+            "reclining": 0.034871410578489304,
+            "slouching": 0.10281119495630264
+        }
+    },
+    "frame_00_50.png": {
+        "prediction": "crossed_legs",
+        "confidence_scores": {
+            "crossed_legs": 0.8413575887680054,
+            "proper": 0.06268368661403656,
+            "reclining": 0.0781785398721695,
+            "slouching": 0.017780177295207977
+        }
+    },
+    "frame_00_53.png": {
+        "prediction": "proper",
+        "confidence_scores": {
+            "crossed_legs": 1.4570326811735868e-06,
+            "proper": 0.7298498749732971,
+            "reclining": 0.2568992078304291,
+            "slouching": 0.013249460607767105
+        }
+    },
+    "frame_00_57.png": {
+        "prediction": "reclining",
+        "confidence_scores": {
+            "crossed_legs": 0.10151471197605133,
+            "proper": 0.06426110863685608,
+            "reclining": 0.8325873017311096,
+            "slouching": 0.0016369407530874014
+        }
+    },
+    "frame_01_00.png": {
+        "prediction": "reclining",
+        "confidence_scores": {
+            "crossed_legs": 8.817238494884805e-07,
+            "proper": 0.369145005941391,
+            "reclining": 0.628503680229187,
+            "slouching": 0.0023504667915403843
+        }
+    },
+    "frame_01_03.png": {
+        "prediction": "proper",
+        "confidence_scores": {
+            "crossed_legs": 1.3533876881410833e-06,
+            "proper": 0.8069556951522827,
+            "reclining": 0.12276332825422287,
+            "slouching": 0.07027965784072876
+        }
+    },
+    "frame_01_06.png": {
+        "prediction": "reclining",
+        "confidence_scores": {
+            "crossed_legs": 1.3472288173943525e-06,
+            "proper": 0.48543936014175415,
+            "reclining": 0.5090222954750061,
+            "slouching": 0.0055370209738612175
+        }
+    },
+    "frame_01_07.png": {
+        "prediction": "proper",
+        "confidence_scores": {
+            "crossed_legs": 1.2960072126588784e-06,
+            "proper": 0.6687983274459839,
+            "reclining": 0.3206285238265991,
+            "slouching": 0.01057185884565115
+        }
+    },
+    "frame_01_11.png": {
+        "prediction": "reclining",
+        "confidence_scores": {
+            "crossed_legs": 0.06205239146947861,
+            "proper": 0.03142978623509407,
+            "reclining": 0.9039052724838257,
+            "slouching": 0.0026125323493033648
+        }
+    },
+    "frame_01_17.png": {
+        "prediction": "reclining",
+        "confidence_scores": {
+            "crossed_legs": 0.1667892336845398,
+            "proper": 0.03851640969514847,
+            "reclining": 0.7915111780166626,
+            "slouching": 0.0031831758096814156
+        }
+    },
+    "frame_01_20.png": {
+        "prediction": "proper",
+        "confidence_scores": {
+            "crossed_legs": 0.09393040835857391,
+            "proper": 0.761440634727478,
+            "reclining": 0.14201870560646057,
+            "slouching": 0.0026102853007614613
+        }
+    }
+}

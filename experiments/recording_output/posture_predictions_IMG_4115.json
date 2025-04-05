@@ -1,0 +1,65 @@
+{
+    "frame_00_12.png": {
+        "prediction": "proper",
+        "confidence_scores": {
+            "crossed_legs": 0.19281084835529327,
+            "proper": 0.7119354605674744,
+            "reclining": 0.09391780197620392,
+            "slouching": 0.0013358958531171083
+        }
+    },
+    "frame_00_18.png": {
+        "prediction": "crossed_legs",
+        "confidence_scores": {
+            "crossed_legs": 0.9823492169380188,
+            "proper": 0.008100578561425209,
+            "reclining": 0.009403604082763195,
+            "slouching": 0.00014659798762295395
+        }
+    },
+    "frame_00_22.png": {
+        "prediction": "crossed_legs",
+        "confidence_scores": {
+            "crossed_legs": 0.9293888211250305,
+            "proper": 0.050705257803201675,
+            "reclining": 0.019234169274568558,
+            "slouching": 0.0006717193173244596
+        }
+    },
+    "frame_00_25.png": {
+        "prediction": "proper",
+        "confidence_scores": {
+            "crossed_legs": 0.10332618653774261,
+            "proper": 0.8002668023109436,
+            "reclining": 0.0712641030550003,
+            "slouching": 0.025142936035990715
+        }
+    },
+    "frame_00_33.png": {
+        "prediction": "slouching",
+        "confidence_scores": {
+            "crossed_legs": 0.06314237415790558,
+            "proper": 0.035462312400341034,
+            "reclining": 0.05932757258415222,
+            "slouching": 0.8420677185058594
+        }
+    },
+    "frame_00_38.png": {
+        "prediction": "crossed_legs",
+        "confidence_scores": {
+            "crossed_legs": 0.9840032458305359,
+            "proper": 0.006057774182409048,
+            "reclining": 0.009902332909405231,
+            "slouching": 3.662745075416751e-05
+        }
+    },
+    "frame_00_40.png": {
+        "prediction": "crossed_legs",
+        "confidence_scores": {
+            "crossed_legs": 0.9708833694458008,
+            "proper": 0.011458083987236023,
+            "reclining": 0.017646128311753273,
+            "slouching": 1.2421309293131344e-05
+        }
+    }
+}
