@@ -3,4 +3,5 @@
 **/__pycache__/
 /yolov5
 /openpose
+/raspi_env
 **/annotated_frames/

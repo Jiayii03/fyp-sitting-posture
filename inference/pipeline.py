@@ -89,7 +89,6 @@ def extract_keypoints(image_input, pose_model, visibility_threshold=0.65):
     results = pose_model.process(image_rgb)
 
     if not results.pose_landmarks:
-        print("No pose detected in the image.")
         return None, image
 
     keypoints = []
