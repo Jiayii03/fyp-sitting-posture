@@ -15,7 +15,7 @@
 
 ## Setup
 
-1. Create python virtual environment, run
+1. Create python virtual environment, `cd backend` and run `pip install -r requirements.txt --no-cache-dir`.
 
 2. If `import libcamera` fails, run
 ```bash
@@ -27,6 +27,7 @@ sudo apt-get install libcamera-apps python3-libcamera
 ```bash
 sed -i 's/include-system-site-packages = false/include-system-site-packages = true/' myenv/pyvenv.cfg
 ```
+
 ## Install Docker
 
 Docker is needed to run `backend`, for `kafkaService`. Run

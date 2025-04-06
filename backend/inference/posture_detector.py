@@ -4,7 +4,7 @@ import torch.nn.functional as F
 import numpy as np
 import cv2
 import os
-import tensorflow as tf
+import tflite_runtime.interpreter as tflite
 
 needed_landmarks = [
     mp.solutions.pose.PoseLandmark.NOSE,
@@ -52,7 +52,7 @@ class PostureDetector:
             print("python export.py --weights ../models/yolo-human-detection/yolov5n.pt --include tflite")
             return None
         
-        interpreter = tf.lite.Interpreter(model_path=tflite_model_path)
+        interpreter = tflite.Interpreter(model_path=tflite_model_path)
         interpreter.allocate_tensors()
         
         # Get input and output details

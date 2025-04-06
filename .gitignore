@@ -3,4 +3,5 @@
 **/__pycache__/
 /yolov5
 /myenv
+/raspi_env
 **/nohup.out
