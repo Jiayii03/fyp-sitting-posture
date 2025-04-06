@@ -4,7 +4,17 @@ import torch.nn.functional as F
 import numpy as np
 import cv2
 import os
-import tflite_runtime.interpreter as tflite
+from config.settings import ON_RASPBERRY
+
+# Conditionally import TFLite or PyTorch
+if ON_RASPBERRY:
+    try:
+        import tflite_runtime.interpreter as tflite
+    except ImportError:
+        print("Warning: tflite_runtime not available on Raspberry Pi")
+        tflite = None
+else:
+    tflite = None
 
 needed_landmarks = [
     mp.solutions.pose.PoseLandmark.NOSE,
@@ -41,25 +51,63 @@ class PostureDetector:
         self.input_size = (416, 416)
         
     def _load_yolo_model(self):
-        """Load the YOLO model using TensorFlow Lite for better performance on Raspberry Pi"""
-        # Path to the TFLite model file
-        tflite_model_path = "../models/yolo-human-detection/yolov5n-fp16.tflite"
-        
-        # If TFLite model doesn't exist, inform the user
-        if not os.path.exists(tflite_model_path):
-            print(f"TFLite model not found at {tflite_model_path}. Please convert the PyTorch model first.")
-            print("You can use the export script from YOLOv5 repository:")
-            print("python export.py --weights ../models/yolo-human-detection/yolov5n.pt --include tflite")
-            return None
-        
-        interpreter = tflite.Interpreter(model_path=tflite_model_path)
-        interpreter.allocate_tensors()
-        
-        # Get input and output details
-        self.input_details = interpreter.get_input_details()
-        self.output_details = interpreter.get_output_details()
-        
-        return interpreter
+        """Load the appropriate YOLO model based on the platform"""
+        if ON_RASPBERRY and tflite is not None:
+            # Use TFLite for Raspberry Pi
+            print("Loading TFLite YOLO model for Raspberry Pi...")
+            tflite_model_path = "../models/yolo-human-detection/yolov5n-fp16.tflite"
+            
+            if not os.path.exists(tflite_model_path):
+                print(f"TFLite model not found at {tflite_model_path}. Please convert the PyTorch model first.")
+                print("You can use the export script from YOLOv5 repository:")
+                print("python export.py --weights ../models/yolo-human-detection/yolov5n.pt --include tflite")
+                return None
+            
+            interpreter = tflite.Interpreter(model_path=tflite_model_path)
+            interpreter.allocate_tensors()
+            
+            # Get input and output details
+            self.input_details = interpreter.get_input_details()
+            self.output_details = interpreter.get_output_details()
+            
+            return interpreter
+        else:
+            # Use PyTorch YOLOv5 for other platforms
+            print("Loading PyTorch YOLO model...")
+            try:
+                # Check if torch is available
+                import torch
+                
+                # Try to import the YOLOv5 model
+                try:
+                    model_path = "../models/yolo-human-detection/yolov5n.pt"
+                    if os.path.exists(model_path):
+                        # Try to load with torch.hub first
+                        try:
+                            model = torch.hub.load('ultralytics/yolov5', 'custom', path=model_path)
+                        except Exception:
+                            # If torch.hub fails, try direct loading
+                            from models.yolo import attempt_load
+                            model = attempt_load(model_path, device='cpu')
+                        
+                        model.eval()
+                        return model
+                    else:
+                        print(f"PyTorch model not found at {model_path}")
+                        return None
+                except ImportError:
+                    print("YOLOv5 model implementation not found. Trying to load from torch hub...")
+                    try:
+                        # Attempt to load a pre-trained model from torch hub
+                        model = torch.hub.load('ultralytics/yolov5', 'yolov5n', pretrained=True)
+                        model.eval()
+                        return model
+                    except Exception as e:
+                        print(f"Failed to load YOLOv5 from torch hub: {e}")
+                        return None
+            except ImportError:
+                print("PyTorch not available. Cannot load YOLO model.")
+                return None
     
     def _process_tflite_output(self, outputs, img_shape, conf_threshold=0.25, nms_threshold=0.45):
         """Process TFLite YOLO output to get bounding boxes for persons"""
@@ -228,37 +276,64 @@ class PostureDetector:
         - A list of keypoints arrays, each corresponding to a detected person.
         - Processed image with bounding boxes and connections drawn.
         """
-        if isinstance(image_input, str):  # Check if it's a file path
+        if isinstance(image_input, str):
             image = cv2.imread(image_input)
-        else:  # Assume it's already an image (numpy array)
+        else:
             image = image_input
 
         if image is None:
             raise ValueError("Invalid image input. Ensure the file path or frame is correct.")
 
         if self.yolo_model is None:
-            raise ValueError("YOLO model not loaded. Please convert the PyTorch model to TFLite first.")
+            raise ValueError("YOLO model not loaded properly.")
 
-        # Prepare image for TFLite (resize, normalize, add batch dimension)
-        input_shape = self.input_details[0]['shape'][1:3]  # Get expected input shape (height, width)
-        input_tensor = cv2.resize(image, (input_shape[1], input_shape[0]))
-        input_tensor = input_tensor.astype(np.float32) / 255.0  # Normalize to [0,1]
-        input_tensor = np.expand_dims(input_tensor, axis=0)  # Add batch dimension
-        
-        # Set the input tensor
-        self.yolo_model.set_tensor(self.input_details[0]['index'], input_tensor)
-        
-        # Run inference
-        self.yolo_model.invoke()
-        
-        # Get output tensors
-        outputs = []
-        for output_detail in self.output_details:
-            output_data = self.yolo_model.get_tensor(output_detail['index'])
-            outputs.append(output_data)
-        
-        # Process the output to get bounding boxes
-        detections = self._process_tflite_output(outputs, image.shape, conf_threshold=confidence_threshold)
+        # Detect persons using the appropriate model
+        if ON_RASPBERRY and tflite is not None and isinstance(self.yolo_model, tflite.Interpreter):
+            # TFLite model for Raspberry Pi
+            input_shape = self.input_details[0]['shape'][1:3]
+            input_tensor = cv2.resize(image, (input_shape[1], input_shape[0]))
+            input_tensor = input_tensor.astype(np.float32) / 255.0
+            input_tensor = np.expand_dims(input_tensor, axis=0)
+            
+            self.yolo_model.set_tensor(self.input_details[0]['index'], input_tensor)
+            self.yolo_model.invoke()
+            
+            outputs = []
+            for output_detail in self.output_details:
+                output_data = self.yolo_model.get_tensor(output_detail['index'])
+                outputs.append(output_data)
+            
+            detections = self._process_tflite_output(outputs, image.shape, conf_threshold=confidence_threshold)
+        else:
+            # PyTorch model for other platforms
+            try:
+                # Resize image to match YOLO's expected size
+                resized_img = cv2.resize(image, self.input_size)
+                results = self.yolo_model(resized_img)
+                
+                # Convert YOLOv5 results to the same format as our TFLite output processor
+                # Results format may vary based on YOLOv5 version
+                detections = []
+                for detection in results.xyxy[0]:  # Format: x1, y1, x2, y2, confidence, class
+                    if detection[5] == 0:  # Class 0 is person
+                        if detection[4] >= confidence_threshold:  # Check confidence
+                            h, w = image.shape[:2]
+                            # Scale coordinates to original image size
+                            x1 = int(detection[0].item() * (w / self.input_size[0]))
+                            y1 = int(detection[1].item() * (h / self.input_size[1]))
+                            x2 = int(detection[2].item() * (w / self.input_size[0]))
+                            y2 = int(detection[3].item() * (h / self.input_size[1]))
+                            
+                            detections.append({
+                                'x1': x1,
+                                'y1': y1,
+                                'x2': x2,
+                                'y2': y2,
+                                'confidence': detection[4].item()
+                            })
+            except Exception as e:
+                print(f"Error using PyTorch YOLO model: {e}")
+                detections = []
         
         keypoints_list = []
         bboxes = []
