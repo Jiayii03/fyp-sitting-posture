@@ -85,7 +85,7 @@ def video_feed_keypoints():
                 if predicted_label != alert_manager.previous_posture and (current_time - last_emit_time) > 1:
                     alert_manager.previous_posture = predicted_label
                     last_emit_time = current_time
-                    # kafka_service.send_posture_event(predicted_label, f"Posture changed to: {predicted_label}")
+                    kafka_service.send_posture_event(predicted_label, f"Posture changed to: {predicted_label}")
                     print(f"📤 Sent posture event: Posture changed to: {predicted_label}")
 
                 # Check if an alert should be sent for the current posture
@@ -175,7 +175,7 @@ def video_feed_keypoints_multi():
 
                         # Log the posture change
                         log_message = f"[{person_id}]: Changed to {predicted_label}"
-                        # kafka_service.send_posture_event(f"{predicted_label} [**{person_id}**]", log_message)
+                        kafka_service.send_posture_event(f"{predicted_label} [**{person_id}**]", log_message)
                         print(f"📤 Sent posture event: {log_message}")
                         
                     if alert_manager.should_send_alert(predicted_label):
