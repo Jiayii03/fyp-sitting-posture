@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useRef, useState, useEffect } from "react";
+import { frontend_domain, backend_domain } from "@/config/hostConfig";
 import { Listbox, Switch, RadioGroup } from "@headlessui/react";
 import { useSidebarSettings } from "@/context/SidebarContext";
 import { useLog } from "@/context/LoggingContext";
@@ -56,7 +57,7 @@ const Sidebar = () => {
 
     try {
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_LOCAL_BACKEND_URL}/toggle_messaging_alert`,
+        `${backend_domain}/toggle_messaging_alert`,
         {
           method: "POST",
           headers: {

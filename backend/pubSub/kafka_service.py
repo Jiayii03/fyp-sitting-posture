@@ -4,7 +4,7 @@ import json
 import subprocess
 import time
 import os
-from config.settings import ON_RASPBERRY
+from config.settings import ON_RASPBERRY, KAFKA_BROKER
 
 class KafkaService:
     def __init__(self):
@@ -13,22 +13,26 @@ class KafkaService:
         
     def initialize(self):
         """Initialize the Kafka service with retries."""
-        self.start_docker_containers()
+        if not ON_RASPBERRY:
+            self.start_docker_containers()
+        else:
+            print("Running on Raspberry Pi, skipping Docker container setup.")
+        # Connect to Kafka broker
         self.connect_with_retries()
         
     def connect_with_retries(self, max_retries=5, retry_delay=5):
         """Attempt to connect to Kafka broker with retries."""
         for attempt in range(1, max_retries + 1):
             try:
-                print(f"Attempting to connect to Kafka broker (attempt {attempt}/{max_retries})...")
+                print(f"Attempting to connect to Kafka broker at {KAFKA_BROKER} (attempt {attempt}/{max_retries})...")
                 self.producer = KafkaProducer(
-                    bootstrap_servers='localhost:9092',
+                    bootstrap_servers=KAFKA_BROKER,
                     value_serializer=lambda v: json.dumps(v).encode('utf-8'),
                     # Set shorter timeouts to fail faster during retry
                     api_version_auto_timeout_ms=5000,
                     request_timeout_ms=10000
                 )
-                print("✅ Kafka producer initialized successfully")
+                print(f"✅ Kafka producer initialized successfully, connected to {KAFKA_BROKER}")
                 # Test the connection
                 self.producer.bootstrap_connected()
                 return  # Connection successful, exit the retry loop
@@ -70,7 +74,7 @@ class KafkaService:
                     compose_cmd = sudo_prefix + ["docker-compose"]
                 
                 # Construct the full command to start containers
-                full_cmd = compose_cmd + ["-f", "pubSub/docker-compose.yml", "up", "-d"]
+                full_cmd = compose_cmd + ["-f", "../docker-compose.yml", "up", "-d"]
                 
                 # Run Docker Compose to start the containers
                 subprocess.run(full_cmd, check=True)
@@ -104,10 +108,6 @@ class KafkaService:
             return False
         
     def send_alert_event(self, message):
-        if not self.ensure_connection():
-            print("⚠️ Cannot send alert event: Not connected to Kafka")
-            return False
-            
         try:
             self.producer.send('alert_events', {
                 'message': message

@@ -1,10 +1,12 @@
+import { kafka_broker } from './config/hostConfig';
+
 // consumer.js
 const { Kafka } = require('kafkajs');
 
 // Initialize Kafka consumer
 const kafka = new Kafka({
   clientId: 'posture-consumer',
-  brokers: [process.env.NEXT_PUBLIC_KAFKA_BROKER],
+  brokers: [kafka_broker],
 });
 
 const consumer = kafka.consumer({ groupId: 'posture-group' });

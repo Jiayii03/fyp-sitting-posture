@@ -51,3 +51,7 @@ ALERT_COOLDOWN = 30  # 30 seconds
 
 # Path settings
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../"))
+
+# Kafka settings - Dynamically set based on environment
+LAPTOP_IP = os.environ.get("LAPTOP_IP", "172.20.10.4")
+KAFKA_BROKER = f"{LAPTOP_IP}:9092"

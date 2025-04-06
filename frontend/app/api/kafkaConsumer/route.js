@@ -1,9 +1,10 @@
 import { Kafka, logLevel } from "kafkajs";
+import { kafka_broker } from "@/config/hostConfig";
 
 // Initialize Kafka instance
 const kafka = new Kafka({
   clientId: "posture-consumer",
-  brokers: [process.env.NEXT_PUBLIC_KAFKA_BROKER],
+  brokers: [kafka_broker],
   logLevel: logLevel.NOTHING,
 });
 
@@ -18,9 +19,33 @@ export async function GET(req) {
   await alertConsumer.connect();
   await testConsumer.connect();
 
-  await postureConsumer.subscribe({ topic: "posture_events", fromBeginning: false });
-  await alertConsumer.subscribe({ topic: "alert_events", fromBeginning: false });
-  await testConsumer.subscribe({ topic: "test_events", fromBeginning: false });
+  // In your route.js file
+  try {
+    await postureConsumer.subscribe({
+      topic: "posture_events",
+      fromBeginning: false,
+    });
+    await alertConsumer.subscribe({
+      topic: "alert_events",
+      fromBeginning: false,
+    });
+    await testConsumer.subscribe({
+      topic: "test_events",
+      fromBeginning: false,
+    });
+  } catch (error) {
+    console.error("Error subscribing to topics:", error);
+    // Return an appropriate error response
+    return new Response(
+      JSON.stringify({ error: "Failed to subscribe to Kafka topics" }),
+      {
+        status: 500,
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    );
+  }
 
   const readableStream = new ReadableStream({
     start(controller) {
@@ -28,7 +53,9 @@ export async function GET(req) {
       postureConsumer.run({
         eachMessage: async ({ message }) => {
           const event = JSON.parse(message.value.toString());
-          controller.enqueue(`data: ${JSON.stringify({ type: "posture", ...event })}\n\n`);
+          controller.enqueue(
+            `data: ${JSON.stringify({ type: "posture", ...event })}\n\n`
+          );
           console.log("Consumed posture event:", event);
         },
       });
@@ -37,7 +64,9 @@ export async function GET(req) {
       alertConsumer.run({
         eachMessage: async ({ message }) => {
           const event = JSON.parse(message.value.toString());
-          controller.enqueue(`data: ${JSON.stringify({ type: "alert", ...event })}\n\n`);
+          controller.enqueue(
+            `data: ${JSON.stringify({ type: "alert", ...event })}\n\n`
+          );
           console.log("Consumed alert event:", event);
         },
       });
@@ -46,7 +75,9 @@ export async function GET(req) {
       testConsumer.run({
         eachMessage: async ({ message }) => {
           const event = JSON.parse(message.value.toString());
-          controller.enqueue(`data: ${JSON.stringify({ type: "test", ...event })}\n\n`);
+          controller.enqueue(
+            `data: ${JSON.stringify({ type: "test", ...event })}\n\n`
+          );
           console.log("Consumed test event:", event);
         },
       });

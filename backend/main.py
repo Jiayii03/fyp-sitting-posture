@@ -50,8 +50,9 @@ if __name__ == '__main__':
     try:
         # Use debug=False on Raspberry Pi to avoid issues with reloader
         debug_mode = False if ON_RASPBERRY else True
+        port = 5001 if ON_RASPBERRY else 5000
         print(f"Starting posture detection server with debug={debug_mode}...")
-        app.run(host='0.0.0.0', port=5000, debug=debug_mode)
+        app.run(host='0.0.0.0', port=port, debug=debug_mode)
     except KeyboardInterrupt:
         print("\nShutting down gracefully...")
     except Exception as e:

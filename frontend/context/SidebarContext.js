@@ -1,6 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect } from "react";
+import { frontend_domain, backend_domain } from "@/config/hostConfig";
 
 const STORAGE_KEY = "sidebarSettings";
 
@@ -28,7 +29,7 @@ export const SidebarProvider = ({ children }) => {
   // function to call GET request for is_messaging_enabled
   const checkAlertEnabled = async () => {
     const response = await fetch(
-      `${process.env.NEXT_PUBLIC_LOCAL_BACKEND_URL}/is_messaging_enabled`,
+      `${backend_domain}/is_messaging_enabled`,
       {
         method: "GET",
         headers: {

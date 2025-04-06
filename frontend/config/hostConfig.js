@@ -1,14 +1,19 @@
-const env = process.env.NEXT_PUBLIC_ENV || "development";
+const ON_RASPBERRY = process.env.NEXT_PUBLIC_ON_RASPBERRY || "false"; // Default to false if not set
+const LAPTOP_IP = process.env.NEXT_PUBLIC_LAPTOP_IP
+const RASPBERRY_IP = process.env.NEXT_PUBLIC_RASPBERRY_IP
 
 let frontend_domain;
 let backend_domain;
+let kafka_broker;
 
-if (env === "development") {
-  frontend_domain = process.env.NEXT_PUBLIC_LOCAL_FRONTEND_URL || "http://localhost:3000";
-  backend_domain = process.env.NEXT_PUBLIC_LOCAL_BACKEND_URL || "http://localhost:5000";
-} else if (env === "production") {
-  frontend_domain = "https://your-rented-server.com"; // Replace with actual rented server domain
-  backend_domain = "http://your-raspberry-pi-ip:5000"; // Replace with actual Raspberry Pi IP
+frontend_domain = `http://${LAPTOP_IP}:3000`;
+
+if (ON_RASPBERRY === "false") {
+  backend_domain = `http://${LAPTOP_IP}:5000`;
+  kafka_broker = `${LAPTOP_IP}:9092`;
+} else if (ON_RASPBERRY === "true") {
+  backend_domain = `http://${RASPBERRY_IP}:5001`;
+  kafka_broker = `${RASPBERRY_IP}:9092`;
 }
 
-export { frontend_domain, backend_domain };
+export { frontend_domain, backend_domain, kafka_broker };

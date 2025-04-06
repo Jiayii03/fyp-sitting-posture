@@ -3,15 +3,16 @@
 import React, { useState, useEffect, useRef } from "react";
 import Sidebar from "../../components/Sidebar";
 import Logging from "../../components/Logging";
+import { frontend_domain, backend_domain } from "@/config/hostConfig";
 import { Toaster } from "react-hot-toast";
 import { useSidebarSettings } from "@/context/SidebarContext";
 import { useLog } from "@/context/LoggingContext";
 import { useStableEffect } from "@/util/useStableEffect";
 import { Switch } from "@headlessui/react";
 
-const VIDEO_FEED_KEYPOINTS_URL = `${process.env.NEXT_PUBLIC_LOCAL_BACKEND_URL}/video_feed_keypoints`;
-const VIDEO_FEED_KEYPOINTS_MULTI_URL = `${process.env.NEXT_PUBLIC_LOCAL_BACKEND_URL}/video_feed_keypoints_multi`;
-const TOGGLE_INFERENCE_URL = `${process.env.NEXT_PUBLIC_LOCAL_BACKEND_URL}/toggle_inference`;
+const VIDEO_FEED_KEYPOINTS_URL = `${backend_domain}/video_feed_keypoints`;
+const VIDEO_FEED_KEYPOINTS_MULTI_URL = `${backend_domain}/video_feed_keypoints_multi`;
+const TOGGLE_INFERENCE_URL = `${backend_domain}/toggle_inference`;
 
 function Page() {
   const { detectionMode, modelType, sensitivity, isAlertEnabled } =
