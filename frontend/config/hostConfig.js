@@ -7,13 +7,12 @@ let backend_domain;
 let kafka_broker;
 
 frontend_domain = `http://${LAPTOP_IP}:3000`;
+kafka_broker = `${LAPTOP_IP}:9092`;
 
 if (ON_RASPBERRY === "false") {
   backend_domain = `http://${LAPTOP_IP}:5000`;
-  kafka_broker = `${LAPTOP_IP}:9092`;
 } else if (ON_RASPBERRY === "true") {
   backend_domain = `http://${RASPBERRY_IP}:5001`;
-  kafka_broker = `${RASPBERRY_IP}:9092`;
 }
 
 export { frontend_domain, backend_domain, kafka_broker };
