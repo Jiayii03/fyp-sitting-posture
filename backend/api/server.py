@@ -6,7 +6,7 @@ from inference.posture_detector import PostureDetector
 from inference.models import ModelManager
 from alerts.alert_manager import AlertManager
 from pubSub.kafka_service import KafkaService
-from config.settings import DEFAULT_CAMERA_INDEX, DEFAULT_WIDTH, DEFAULT_HEIGHT
+from config.settings import CAMERA_WIDTH, CAMERA_HEIGHT, CAMERA_FRAME_RATE, DEFAULT_CAMERA_INDEX
 
 def create_app():
     """Create and configure the Flask application"""
@@ -24,12 +24,13 @@ def create_app():
     # KafkaService for event messaging
     kafka_service = KafkaService()
     
-    # Initialize all services
+    # Initialize all services with platform-appropriate settings
     video_manager = VideoManager(
         am=alert_manager,
         camera_index=DEFAULT_CAMERA_INDEX,
-        width=DEFAULT_WIDTH,
-        height=DEFAULT_HEIGHT
+        width=CAMERA_WIDTH,
+        height=CAMERA_HEIGHT,
+        frame_rate=CAMERA_FRAME_RATE
     )
     
     # Initialize the camera

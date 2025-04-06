@@ -10,3 +10,9 @@ numpy
 scikit-learn
 mediapipe
 importlib-metadata
+pandas
+
+# Optional dependencies based on platform
+# On Raspberry Pi, install these packages:
+# picamera2
+# libcamera

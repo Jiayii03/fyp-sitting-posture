@@ -3,10 +3,26 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+# Check if running on Raspberry Pi
+ON_RASPBERRY = os.environ.get('ON_RASPBERRY', 'false').lower() == 'true'
+
 # Camera settings
 DEFAULT_CAMERA_INDEX = 0
+
+# Laptop camera settings
 DEFAULT_WIDTH = 1920
 DEFAULT_HEIGHT = 1080
+DEFAULT_FRAME_RATE = 30
+
+# Raspberry Pi camera settings
+RASPBERRY_WIDTH = 640
+RASPBERRY_HEIGHT = 360
+RASPBERRY_FRAME_RATE = 15
+
+# Get the appropriate camera settings based on platform
+CAMERA_WIDTH = RASPBERRY_WIDTH if ON_RASPBERRY else DEFAULT_WIDTH
+CAMERA_HEIGHT = RASPBERRY_HEIGHT if ON_RASPBERRY else DEFAULT_HEIGHT
+CAMERA_FRAME_RATE = RASPBERRY_FRAME_RATE if ON_RASPBERRY else DEFAULT_FRAME_RATE
 
 # Model settings
 INPUT_SIZE = 20
@@ -28,10 +44,10 @@ MODEL_DICT = {
 }
 
 # Alert settings
-TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
-CHAT_ID = os.getenv("CHAT_ID")
-BAD_POSTURE_FRAME_THRESHOLD = 200  # 10 seconds
-ALERT_COOLDOWN = 5  # 30 seconds
+TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
+CHAT_ID = os.environ.get("CHAT_ID")
+BAD_POSTURE_FRAME_THRESHOLD = 200 # 10 seconds at 20 FPS
+ALERT_COOLDOWN = 30  # 30 seconds
 
 # Path settings
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../"))

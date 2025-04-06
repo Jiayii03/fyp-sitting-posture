@@ -1,5 +1,5 @@
 from flask import Blueprint, Response, jsonify, request
-from config.settings import DEFAULT_MODEL_TYPE, MODEL_DICT, CLASS_LABELS
+from config.settings import DEFAULT_MODEL_TYPE, MODEL_DICT, CLASS_LABELS, ON_RASPBERRY
 import cv2
 import numpy as np
 import mediapipe as mp

@@ -13,6 +13,10 @@ export const AlertsProvider = ({ children }) => {
     setAlerts((prevAlerts) => [...prevAlerts, alert]);
   };
 
+  const clearAlerts = () => {
+    setAlerts([]);
+  };
+
   useEffect(() => {
     const eventSource = new EventSource("/api/kafkaConsumer");
 
@@ -38,7 +42,7 @@ export const AlertsProvider = ({ children }) => {
   }, []);
 
   return (
-    <AlertsContext.Provider value={{ alerts, addAlert }}>
+    <AlertsContext.Provider value={{ alerts, addAlert, clearAlerts }}>
       {children}
     </AlertsContext.Provider>
   );
