@@ -17,15 +17,21 @@
 
 1. Create python virtual environment, `cd backend` and run `pip install -r requirements.txt --no-cache-dir`.
 
-2. If `import libcamera` fails, run
+2. If you saw this error 'You need to install libcap development headers to build this module', run:
+```bash
+sudo apt-get update
+sudo apt-get install libcap-dev
+```
+
+3. If `import libcamera` fails, run
 ```bash
 sudo apt-get update
 sudo apt-get install libcamera-apps python3-libcamera
 ```
 
-3. To bind system-wide-packages, run
+4. To bind system-wide-packages, run
 ```bash
-sed -i 's/include-system-site-packages = false/include-system-site-packages = true/' myenv/pyvenv.cfg
+sed -i 's/include-system-site-packages = false/include-system-site-packages = true/' ~/fyp-sitting-posture/raspi_env/pyvenv.cfg
 ```
 
 ## Install Docker
