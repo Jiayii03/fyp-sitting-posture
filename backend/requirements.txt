@@ -7,10 +7,12 @@ requests
 argparse
 torch
 numpy
-scikit-learn
 mediapipe
+matplotlib
 importlib-metadata
 pandas
+tflite_runtime
+scikit-learn
 
 # Optional dependencies based on platform
 # On Raspberry Pi, install these packages:

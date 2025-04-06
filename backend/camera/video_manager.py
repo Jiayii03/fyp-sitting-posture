@@ -1,5 +1,5 @@
-import cv2
 import threading
+import cv2
 import os
 import time
 from datetime import datetime
@@ -107,7 +107,7 @@ class VideoManager:
                 # Laptop camera
                 return self.camera.read()
             return False, None
-            
+
     def release(self):
         """Release the appropriate camera"""
         with self.camera_lock:
