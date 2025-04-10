@@ -1,5 +1,5 @@
 from flask import Blueprint, Response, jsonify, request
-from config.settings import DEFAULT_MODEL_TYPE, MODEL_DICT, CLASS_LABELS, ON_RASPBERRY
+from config.settings import DEFAULT_MODEL_TYPE, MODEL_DICT, CLASS_LABELS, KAFKA_PUBSUB_EVENT
 import cv2
 import numpy as np
 import mediapipe as mp
@@ -85,8 +85,16 @@ def video_feed_keypoints():
                 if predicted_label != alert_manager.previous_posture and (current_time - last_emit_time) > 1:
                     alert_manager.previous_posture = predicted_label
                     last_emit_time = current_time
-                    kafka_service.send_posture_event(predicted_label, f"Posture changed to: {predicted_label}")
-                    print(f"📤 Sent posture event: Posture changed to: {predicted_label}")
+                    if KAFKA_PUBSUB_EVENT:
+                        try:
+                            # Set a timeout for Kafka operations
+                            kafka_send_success = kafka_service.send_posture_event(predicted_label, f"Posture changed to: {predicted_label}")
+                            if kafka_send_success:
+                                print(f"📤 Sent posture event: Posture changed to: {predicted_label}")
+                            else:
+                                print(f"⚠️ Failed to send posture event to Kafka, but continuing inference")
+                        except Exception as e:
+                            print(f"⚠️ Error sending to Kafka: {e}, but continuing inference")
 
                 # Check if an alert should be sent for the current posture
                 if alert_manager.should_send_alert(predicted_label):
@@ -175,8 +183,15 @@ def video_feed_keypoints_multi():
 
                         # Log the posture change
                         log_message = f"[{person_id}]: Changed to {predicted_label}"
-                        kafka_service.send_posture_event(f"{predicted_label} [**{person_id}**]", log_message)
-                        print(f"📤 Sent posture event: {log_message}")
+                        if KAFKA_PUBSUB_EVENT:
+                            try:
+                                kafka_send_success = kafka_service.send_posture_event(f"{predicted_label} [**{person_id}**]", log_message)
+                                if kafka_send_success:
+                                    print(f"📤 Sent posture event: {log_message}")
+                                else:
+                                    print(f"⚠️ Failed to send posture event to Kafka, but continuing inference")
+                            except Exception as e:
+                                print(f"⚠️ Error sending to Kafka: {e}, but continuing inference")
                         
                     if alert_manager.should_send_alert(predicted_label):
                         # Ensure there's a dictionary for this person

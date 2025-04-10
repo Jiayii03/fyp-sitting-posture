@@ -98,36 +98,56 @@ class KafkaService:
         
     def send_posture_event(self, posture, message):
         try:
-            self.producer.send('posture_events', {
+            # Add timeout to prevent hanging
+            future = self.producer.send('posture_events', {
                 'posture': posture,
                 'message': message
             })
+            # Wait for at most 1 second for the message to be sent
+            future.get(timeout=1)
             return True
         except Exception as e:
-            print(f"Failed to send posture event: {e}")
+            print(f"⚠️ Failed to send posture event: {e}")
+            # If we get a connection error, attempt to reconnect
+            if "connection" in str(e).lower() or "timeout" in str(e).lower():
+                print("Attempting to reconnect to Kafka...")
+                self.producer = None
+                self.connect_with_retries(max_retries=1, retry_delay=1)
             return False
         
     def send_alert_event(self, message):
         try:
-            self.producer.send('alert_events', {
+            # Add timeout to prevent hanging
+            future = self.producer.send('alert_events', {
                 'message': message
             })
+            # Wait for at most 1 second for the message to be sent
+            future.get(timeout=1)
             return True
         except Exception as e:
-            print(f"Failed to send alert event: {e}")
+            print(f"⚠️ Failed to send alert event: {e}")
+            # If we get a connection error, attempt to reconnect
+            if "connection" in str(e).lower() or "timeout" in str(e).lower():
+                print("Attempting to reconnect to Kafka...")
+                self.producer = None
+                self.connect_with_retries(max_retries=1, retry_delay=1)
             return False
         
     def send_test_event(self, message):
-        if not self.ensure_connection():
-            print("⚠️ Cannot send test event: Not connected to Kafka")
-            return False
-            
         try:
-            self.producer.send('test_events', {
+            # Add timeout to prevent hanging
+            future = self.producer.send('test_events', {
                 'message': message
             })
+            # Wait for at most 1 second for the message to be sent
+            future.get(timeout=1)
             print("✅ Test event sent successfully")
             return True
         except Exception as e:
-            print(f"Failed to send test event: {e}")
+            print(f"⚠️ Failed to send test event: {e}")
+            # If we get a connection error, attempt to reconnect
+            if "connection" in str(e).lower() or "timeout" in str(e).lower():
+                print("Attempting to reconnect to Kafka...")
+                self.producer = None
+                self.connect_with_retries(max_retries=1, retry_delay=1)
             return False
