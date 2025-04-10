@@ -319,7 +319,7 @@ def process_frames(frames_dir, output_dir, model_path, scaler_mean_path, scaler_
 if __name__ == "__main__":
     # Parse command line arguments
     parser = argparse.ArgumentParser(description="Process frames for posture detection.")
-    parser.add_argument("--frames_dir", type=str, default="../../datasets/recordings/extracted_frames/IMG_4115", help="Directory containing extracted frames")
+    parser.add_argument("--frames_dir", type=str, default="../../datasets/evaluation/extracted_frames/additional", help="Directory containing extracted frames")
     parser.add_argument("--output_dir", type=str, default="../experiments/recording_output", help="Directory to save prediction results")
     parser.add_argument("--model_dir", type=str, default="../models/2025-04-03_23-55-32", help="Directory containing model files")
     parser.add_argument("--model_file", type=str, default="epochs_300_lr_1e-03_wd_5e-03_acc_8963.pth", help="Model filename")

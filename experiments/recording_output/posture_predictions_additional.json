@@ -1,0 +1,83 @@
+{
+    "001.jpg": {
+        "prediction": "reclining",
+        "confidence_scores": {
+            "crossed_legs": 1.7799437046051025e-05,
+            "proper": 0.0033810092136263847,
+            "reclining": 0.9965806603431702,
+            "slouching": 2.0491208488238044e-05
+        }
+    },
+    "003.jpg": {
+        "prediction": "reclining",
+        "confidence_scores": {
+            "crossed_legs": 0.47461241483688354,
+            "proper": 0.031478121876716614,
+            "reclining": 0.49389198422431946,
+            "slouching": 1.7476764696766622e-05
+        }
+    },
+    "029.jpg": {
+        "prediction": "proper",
+        "confidence_scores": {
+            "crossed_legs": 0.0016632284969091415,
+            "proper": 0.8226864337921143,
+            "reclining": 0.17479370534420013,
+            "slouching": 0.0008566263131797314
+        }
+    },
+    "057.jpg": {
+        "prediction": "slouching",
+        "confidence_scores": {
+            "crossed_legs": 6.286908319452778e-05,
+            "proper": 0.02816876955330372,
+            "reclining": 0.0005777116748504341,
+            "slouching": 0.9711906909942627
+        }
+    },
+    "090.jpg": {
+        "prediction": "slouching",
+        "confidence_scores": {
+            "crossed_legs": 1.3892583750063636e-09,
+            "proper": 0.01300803292542696,
+            "reclining": 1.8241373254568316e-05,
+            "slouching": 0.9869737029075623
+        }
+    },
+    "139.jpg": {
+        "prediction": "crossed_legs",
+        "confidence_scores": {
+            "crossed_legs": 0.9997401833534241,
+            "proper": 1.1736447959265206e-05,
+            "reclining": 0.0002480435941834003,
+            "slouching": 6.4822499717129625e-15
+        }
+    },
+    "145.jpg": {
+        "prediction": "proper",
+        "confidence_scores": {
+            "crossed_legs": 8.225095604608157e-11,
+            "proper": 0.9776016473770142,
+            "reclining": 0.0005303878569975495,
+            "slouching": 0.02186797931790352
+        }
+    },
+    "190.jpg": {
+        "prediction": "proper",
+        "confidence_scores": {
+            "crossed_legs": 9.696131542114017e-08,
+            "proper": 0.9510838389396667,
+            "reclining": 0.005068800412118435,
+            "slouching": 0.043847281485795975
+        }
+    },
+    "191.jpg": {
+        "prediction": "slouching",
+        "confidence_scores": {
+            "crossed_legs": 7.430068308167392e-06,
+            "proper": 0.021391501650214195,
+            "reclining": 0.001205017906613648,
+            "slouching": 0.9773960709571838
+        }
+    }
+}
