@@ -14,15 +14,17 @@ posture_detector = None
 model_manager = None
 alert_manager = None
 kafka_service = None
+resource_monitor = None
 
-def init_services(vm, pd, mm, am, ks):
+def init_services(vm, pd, mm, am, ks, rm):
     """Initialize the services that routes depend on"""
-    global video_manager, posture_detector, model_manager, alert_manager, kafka_service
+    global video_manager, posture_detector, model_manager, alert_manager, kafka_service, resource_monitor
     video_manager = vm
     posture_detector = pd
     model_manager = mm
     alert_manager = am
     kafka_service = ks
+    resource_monitor = rm
 
 @api_bp.route('/video_feed')
 def video_feed():
@@ -397,3 +399,37 @@ def stop_recording():
             "status": "error", 
             "message": message
         }), 400
+        
+# Add new routes
+@api_bp.route('/resources/start', methods=['POST'])
+def start_resource_monitoring():
+    """
+    Start resource monitoring.
+    curl -X POST http://localhost:5000/resources/start
+    """
+    if resource_monitor:
+        resource_monitor.start()
+        return jsonify({"status": "success", "message": "Resource monitoring started"})
+    return jsonify({"status": "error", "message": "Resource monitor not initialized"}), 500
+
+@api_bp.route('/resources/stop', methods=['POST'])
+def stop_resource_monitoring():
+    """
+    Stop resource monitoring and save results.
+    curl -X POST http://localhost:5000/resources/stop
+    """
+    if resource_monitor:
+        resource_monitor.stop()
+        return jsonify({"status": "success", "message": "Resource monitoring stopped and data saved"})
+    return jsonify({"status": "error", "message": "Resource monitor not initialized"}), 500
+
+@api_bp.route('/resources/report', methods=['GET'])
+def get_resource_report():
+    """
+    Get resource monitoring report as JSON.
+    curl -X GET http://localhost:5000/resources/report
+    """
+    if resource_monitor:
+        report = resource_monitor.generate_report()
+        return jsonify({"status": "success", "data": report})
+    return jsonify({"status": "error", "message": "Resource monitor not initialized"}), 500

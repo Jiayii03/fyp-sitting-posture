@@ -6,3 +6,4 @@
 /raspi_env
 **/annotated_frames/
 **/nohup.out
+**/logs/

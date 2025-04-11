@@ -6,12 +6,17 @@ from inference.posture_detector import PostureDetector
 from inference.models import ModelManager
 from alerts.alert_manager import AlertManager
 from pubSub.kafka_service import KafkaService
+from util.resource_monitor import ResourceMonitor
 from config.settings import CAMERA_WIDTH, CAMERA_HEIGHT, CAMERA_FRAME_RATE, DEFAULT_CAMERA_INDEX
 
 def create_app():
     """Create and configure the Flask application"""
     app = Flask(__name__)
     CORS(app, resources={r"/*": {"origins": "*"}})
+    
+    # Initialize resource monitor
+    resource_monitor = ResourceMonitor(sampling_interval=1.0)  # 1-second interval
+    resource_monitor.start()
 
     model_manager = ModelManager()
     
@@ -42,7 +47,8 @@ def create_app():
         posture_detector,
         model_manager,
         alert_manager,
-        kafka_service
+        kafka_service,
+        resource_monitor
     )
     
     # Register blueprint
