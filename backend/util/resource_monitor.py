@@ -25,12 +25,21 @@ class ResourceMonitor:
             "disk_io_write_mb": [],
             "network_sent_mb": [],
             "network_recv_mb": [],
-            "temperature": []
+            "temperature": [],
+            "inference_fps": [],         # New: Inference FPS (frames per second)
+            "inference_latency_ms": []   # New: Inference latency in milliseconds
         }
         self.prev_disk_read = 0
         self.prev_disk_write = 0
         self.prev_net_sent = 0
         self.prev_net_recv = 0
+        
+        # FPS tracking variables
+        self.frame_count = 0
+        self.last_fps_update = time.time()
+        self.current_fps = 0.0
+        self.frame_times = []  # Store recent frame processing times for latency calculation
+        self.max_frame_times = 30  # Keep track of last 30 frames for rolling average
         
         # Create log directory if it doesn't exist
         os.makedirs(log_dir, exist_ok=True)
@@ -60,6 +69,35 @@ class ResourceMonitor:
         # Save collected statistics
         self._save_stats()
         print("Resource monitoring stopped and data saved")
+
+    def update_fps(self):
+        """Update the FPS counter - should be called on each frame"""
+        self.frame_count += 1
+        current_time = time.time()
+        elapsed = current_time - self.last_fps_update
+        
+        # Update FPS every second
+        if elapsed >= 1.0:
+            self.current_fps = self.frame_count / elapsed
+            self.frame_count = 0
+            self.last_fps_update = current_time
+    
+    def record_frame_time(self, processing_time_ms):
+        """Record the time taken to process a frame in milliseconds"""
+        self.frame_times.append(processing_time_ms)
+        # Keep only the most recent frames for rolling average
+        if len(self.frame_times) > self.max_frame_times:
+            self.frame_times.pop(0)
+            
+    def get_current_fps(self):
+        """Get the current FPS value"""
+        return self.current_fps
+    
+    def get_avg_latency(self):
+        """Get the average latency in milliseconds"""
+        if not self.frame_times:
+            return 0
+        return sum(self.frame_times) / len(self.frame_times)
         
     def _monitor_resources(self):
         """Monitor system resources periodically"""
@@ -127,6 +165,10 @@ class ResourceMonitor:
                 else:
                     self.stats["temperature"].append(0)
                 
+                # Record FPS and latency metrics
+                self.stats["inference_fps"].append(self.current_fps)
+                self.stats["inference_latency_ms"].append(self.get_avg_latency())
+                
             except Exception as e:
                 print(f"Error monitoring resources: {e}")
                 
@@ -188,7 +230,6 @@ class ResourceMonitor:
         """
         Generate a structured report as a JSON-friendly dictionary
         Return the stats since the last resource monitoring reset
-        
         """
         summary = self.get_summary_stats()
         if not summary:
@@ -219,6 +260,20 @@ class ResourceMonitor:
                     "sent": round(summary['network_sent_mb_mean'], 4),
                     "received": round(summary['network_recv_mb_mean'], 4),
                     "unit": "MB/s"
+                },
+                "inference": {
+                    "fps": {
+                        "average": round(summary['inference_fps_mean'], 2),
+                        "min": round(summary['inference_fps_min'], 2) if 'inference_fps_min' in summary else 0,
+                        "max": round(summary['inference_fps_max'], 2) if 'inference_fps_max' in summary else 0,
+                        "unit": "frames/sec"
+                    },
+                    "latency": {
+                        "average": round(summary['inference_latency_ms_mean'], 2) if 'inference_latency_ms_mean' in summary else 0,
+                        "min": round(summary['inference_latency_ms_min'], 2) if 'inference_latency_ms_min' in summary else 0,
+                        "max": round(summary['inference_latency_ms_max'], 2) if 'inference_latency_ms_max' in summary else 0,
+                        "unit": "ms/frame"
+                    }
                 }
             }
         }

@@ -69,6 +69,9 @@ def video_feed_keypoints():
     def generate():
         nonlocal last_emit_time
         while video_manager.inference_running:
+            # Track the start time for this frame
+            frame_start_time = time.time()
+            
             success, frame = video_manager.read_frame()
             if not success:
                 break
@@ -114,9 +117,20 @@ def video_feed_keypoints():
 
                 # Set display color and feedback text
                 color = (0, 255, 0) if predicted_label == "proper" else (0, 0, 255)
-                feedback_text = f"Posture: {predicted_label}"
+                
+                # Calculate FPS and display it
+                resource_monitor.update_fps()
+                current_fps = resource_monitor.get_current_fps()
+                
+                # Calculate the frame processing time and update latency stats
+                frame_processing_time = (time.time() - frame_start_time) * 1000  # Convert to ms
+                resource_monitor.record_frame_time(frame_processing_time)
+                avg_latency = resource_monitor.get_avg_latency()
+                
+                # Add FPS and latency to the feedback text
+                feedback_text = f"Posture: {predicted_label} | FPS: {current_fps:.1f} | Latency: {avg_latency:.1f}ms"
                 cv2.putText(frame_with_keypoints, feedback_text, (10, 30),
-                            cv2.FONT_HERSHEY_SIMPLEX, 1, color, 2)
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.7, color, 2)
 
             # Encode the frame as JPEG and yield for streaming
             _, buffer = cv2.imencode('.jpg', frame_with_keypoints)
@@ -152,6 +166,9 @@ def video_feed_keypoints_multi():
     def generate():
         nonlocal person_postures, last_emit_times
         while video_manager.inference_running:
+            # Track the start time for this frame
+            frame_start_time = time.time()
+            
             success, frame = video_manager.read_frame()
             if not success:
                 break
@@ -223,6 +240,19 @@ def video_feed_keypoints_multi():
                     # Draw feedback text on the frame
                     cv2.putText(frame_with_keypoints, feedback_text, (x_min, y_min - 40),
                                 cv2.FONT_HERSHEY_SIMPLEX, 0.7, color, 2)
+                                
+            # Update FPS and latency metrics
+            resource_monitor.update_fps()
+            current_fps = resource_monitor.get_current_fps()
+            
+            # Calculate the frame processing time and update latency stats
+            frame_processing_time = (time.time() - frame_start_time) * 1000  # Convert to ms
+            resource_monitor.record_frame_time(frame_processing_time)
+            avg_latency = resource_monitor.get_avg_latency()
+            
+            # Add FPS and latency to the frame
+            cv2.putText(frame_with_keypoints, f"FPS: {current_fps:.1f} | Latency: {avg_latency:.1f}ms", 
+                       (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 165, 255), 2)
 
             # Encode the frame as JPEG
             _, buffer = cv2.imencode('.jpg', frame_with_keypoints)
