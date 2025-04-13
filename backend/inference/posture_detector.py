@@ -44,7 +44,7 @@ class PostureDetector:
     def __init__(self, model_manager):
         self.model_manager = model_manager
         self.mp_pose = mp.solutions.pose
-        self.pose = self.mp_pose.Pose(static_image_mode=False, min_detection_confidence=0.5, min_tracking_confidence=0.5)
+        self.pose = self.mp_pose.Pose(static_image_mode=False, min_detection_confidence=0.5, min_tracking_confidence=0.5, model_complexity=0)
         self.yolo_model = self._load_yolo_model()
         self.needed_landmarks = needed_landmarks
         self.custom_connections = custom_connections
