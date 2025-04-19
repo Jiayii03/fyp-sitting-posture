@@ -1,5 +1,4 @@
 import torch.nn as nn
-
 class MLP(nn.Module):
     def __init__(self, input_size, num_classes):
         super(MLP, self).__init__()
