@@ -7,15 +7,17 @@ import csv
 import numpy as np
 from datetime import datetime
 import platform
-from config.settings import ON_RASPBERRY
+from config.settings import ON_RASPBERRY, MONITORING_AUTO_STOP
 
 class ResourceMonitor:
-    def __init__(self, sampling_interval=1.0, log_dir="logs"):
+    def __init__(self, sampling_interval=1.0, log_dir="logs", auto_stop_minutes=10):
         self.sampling_interval = sampling_interval  # seconds
         self.monitoring = False
         self.monitor_thread = None
+        self.auto_stop_thread = None
         self.process = psutil.Process(os.getpid())
         self.log_dir = log_dir
+        self.auto_stop_minutes = auto_stop_minutes
         self.stats = {
             "timestamp": [],
             "cpu_percent": [],
@@ -45,7 +47,7 @@ class ResourceMonitor:
         os.makedirs(log_dir, exist_ok=True)
         
     def start(self):
-        """Start monitoring system resources"""
+        """Start monitoring system resources with automatic timeout"""
         if self.monitoring:
             print("Resource monitoring is already running")
             return
@@ -54,7 +56,25 @@ class ResourceMonitor:
         self.monitor_thread = threading.Thread(target=self._monitor_resources)
         self.monitor_thread.daemon = True
         self.monitor_thread.start()
-        print("Resource monitoring started")
+        print(f"Resource monitoring started")
+        
+        # Start auto-stop timer thread if enabled
+        if MONITORING_AUTO_STOP:
+            print("Auto-stop feature is enabled")
+            self.auto_stop_thread = threading.Thread(target=self._auto_stop_timer)
+            self.auto_stop_thread.daemon = True
+            self.auto_stop_thread.start()
+        else:
+            print("Auto-stop feature is disabled")
+        
+    def _auto_stop_timer(self):
+        """Timer thread to automatically stop monitoring after specified duration"""
+        auto_stop_seconds = self.auto_stop_minutes * 60
+        time.sleep(auto_stop_seconds)
+        
+        if self.monitoring:
+            print(f"Auto-stopping resource monitoring after {self.auto_stop_minutes} minutes")
+            self.stop()
         
     def stop(self):
         """Stop monitoring and save results"""
@@ -101,6 +121,8 @@ class ResourceMonitor:
         
     def _monitor_resources(self):
         """Monitor system resources periodically"""
+        start_time = time.time()
+        
         while self.monitoring:
             try:
                 # Record timestamp
@@ -168,6 +190,13 @@ class ResourceMonitor:
                 # Record FPS and latency metrics
                 self.stats["inference_fps"].append(self.current_fps)
                 self.stats["inference_latency_ms"].append(self.get_avg_latency())
+                
+                # Log monitoring progress every minute
+                if MONITORING_AUTO_STOP:
+                    elapsed_minutes = (time.time() - start_time) / 60
+                    if elapsed_minutes > 0 and elapsed_minutes % 1 < self.sampling_interval / 60:
+                        remaining_minutes = max(0, self.auto_stop_minutes - elapsed_minutes)
+                        print(f"Resource monitoring: {elapsed_minutes:.1f} minutes elapsed, {remaining_minutes:.1f} minutes remaining")
                 
             except Exception as e:
                 print(f"Error monitoring resources: {e}")
