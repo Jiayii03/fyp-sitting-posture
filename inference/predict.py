@@ -129,7 +129,7 @@ def extract_keypoints(image_input, pose_model, visibility_threshold=0.65):
     # Draw keypoints and connections on the image
     for i, (x, y) in enumerate(keypoints):
         if x != 0 and y != 0:  # Only draw visible keypoints
-            cv2.circle(image, (int(x * w), int(y * h)), 5, (0, 255, 0), -1)
+            cv2.circle(image, (int(x * w), int(y * h)), 6, (0, 255, 0), -1)
 
     for start_idx, end_idx in custom_connections:
         start_point = keypoints[start_idx]
@@ -140,7 +140,7 @@ def extract_keypoints(image_input, pose_model, visibility_threshold=0.65):
                 (int(start_point[0] * w), int(start_point[1] * h)),
                 (int(end_point[0] * w), int(end_point[1] * h)),
                 (255, 0, 0),
-                2,
+                3,
             )
 
     return keypoints.flatten(), image
@@ -281,7 +281,7 @@ def process_frames(frames_dir, output_dir, model_path, scaler_mean_path, scaler_
                 f"Prediction: {predicted_label}",
                 text_position,
                 cv2.FONT_HERSHEY_SIMPLEX,
-                1,
+                1.5,
                 (0, 0, 255),
                 2
             )
@@ -319,7 +319,7 @@ def process_frames(frames_dir, output_dir, model_path, scaler_mean_path, scaler_
 if __name__ == "__main__":
     # Parse command line arguments
     parser = argparse.ArgumentParser(description="Process frames for posture detection.")
-    parser.add_argument("--frames_dir", type=str, default="../../datasets/recordings/extracted_frames/IMG_4115", help="Directory containing extracted frames")
+    parser.add_argument("--frames_dir", type=str, default="../../datasets/evaluation/extracted_frames/IMG_4114", help="Directory containing extracted frames")
     parser.add_argument("--output_dir", type=str, default="../experiments/recording_output", help="Directory to save prediction results")
     parser.add_argument("--model_dir", type=str, default="../models/2025-04-03_23-55-32", help="Directory containing model files")
     parser.add_argument("--model_file", type=str, default="epochs_300_lr_1e-03_wd_5e-03_acc_8963.pth", help="Model filename")
