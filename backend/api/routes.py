@@ -76,6 +76,18 @@ def video_feed_keypoints():
             if not success:
                 break
 
+            # Get frame dimensions for dynamic font sizing
+            height, width = frame.shape[:2]
+            
+            # Calculate dynamic font scale based on resolution
+            base_width = 640
+            base_font_scale = 0.7
+            font_scale = (width / base_width) * base_font_scale
+            font_scale = max(0.4, font_scale)  # Minimum size for readability
+            
+            # Calculate text thickness based on resolution
+            text_thickness = max(1, int(font_scale * 2.5))
+
             # Process the frame for keypoints
             keypoints, frame_with_keypoints = posture_detector.extract_keypoints(frame, posture_detector.pose)
 
@@ -130,7 +142,7 @@ def video_feed_keypoints():
                 # Add FPS and latency to the feedback text
                 feedback_text = f"Posture: {predicted_label} | FPS: {current_fps:.1f} | Latency: {avg_latency:.1f}ms"
                 cv2.putText(frame_with_keypoints, feedback_text, (10, 30),
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.7, color, 2)
+                            cv2.FONT_HERSHEY_SIMPLEX, font_scale, color, text_thickness)
 
             # Encode the frame as JPEG and yield for streaming
             _, buffer = cv2.imencode('.jpg', frame_with_keypoints)
@@ -172,7 +184,19 @@ def video_feed_keypoints_multi():
             success, frame = video_manager.read_frame()
             if not success:
                 break
-
+            
+            # Get frame dimensions for dynamic font sizing
+            height, width = frame.shape[:2]
+                        
+            # Calculate dynamic font scale based on resolution
+            base_width = 640
+            base_font_scale = 0.7
+            font_scale = (width / base_width) * base_font_scale
+            font_scale = max(0.4, font_scale)  # Minimum size for readability
+                        
+            # Calculate text thickness based on resolution
+            text_thickness = max(1, int(font_scale * 2.5))
+            
             # Detect keypoints for multiple persons
             keypoints_list, frame_with_keypoints, bboxes = posture_detector.extract_keypoints_multi_person(frame, posture_detector.pose)
 
@@ -239,7 +263,7 @@ def video_feed_keypoints_multi():
 
                     # Draw feedback text on the frame
                     cv2.putText(frame_with_keypoints, feedback_text, (x_min, y_min - 40),
-                                cv2.FONT_HERSHEY_SIMPLEX, 0.7, color, 2)
+                    cv2.FONT_HERSHEY_SIMPLEX, font_scale, color, text_thickness)
                                 
             # Update FPS and latency metrics
             resource_monitor.update_fps()
@@ -252,7 +276,7 @@ def video_feed_keypoints_multi():
             
             # Add FPS and latency to the frame
             cv2.putText(frame_with_keypoints, f"FPS: {current_fps:.1f} | Latency: {avg_latency:.1f}ms", 
-                       (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 165, 255), 2)
+            (10, 30), cv2.FONT_HERSHEY_SIMPLEX, font_scale, (0, 165, 255), text_thickness)
 
             # Encode the frame as JPEG
             _, buffer = cv2.imencode('.jpg', frame_with_keypoints)

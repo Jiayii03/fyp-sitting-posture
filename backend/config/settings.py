@@ -15,9 +15,9 @@ DEFAULT_HEIGHT = 1080
 DEFAULT_FRAME_RATE = 30
 
 # Raspberry Pi camera settings
-RASPBERRY_WIDTH = 640
-RASPBERRY_HEIGHT = 360
-RASPBERRY_FRAME_RATE = 15
+RASPBERRY_WIDTH = 854
+RASPBERRY_HEIGHT = 480
+RASPBERRY_FRAME_RATE = 20
 """
 1280 × 720 (HD)
 960 × 540 (qHD)
@@ -65,4 +65,5 @@ LAPTOP_IP = os.environ.get("LAPTOP_IP", "172.20.10.4")
 KAFKA_BROKER = f"{LAPTOP_IP}:9092"
 
 # Resource monitoring settings
-MONITORING_AUTO_STOP = False
+# If True, the resource monitoring will automatically stop after x minutes.
+MONITORING_AUTO_STOP = True

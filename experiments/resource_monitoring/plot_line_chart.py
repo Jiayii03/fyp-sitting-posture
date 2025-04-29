@@ -104,7 +104,7 @@ def plot_resource_stats(csv_file):
 
 
 # Specify the path to your CSV file directly in the script
-csv_file_path = "../../backend/logs/resource_stats_raspberry_20250412_053534.csv"
+csv_file_path = "../../backend/logs/resource_stats_raspberry_20250419_091055.csv"
 
 # Call the function to generate the plot
 plot_resource_stats(csv_file_path)

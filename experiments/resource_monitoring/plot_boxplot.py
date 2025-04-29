@@ -49,8 +49,8 @@ def plot_comparative_boxplots(unoptimized_csv, optimized_csv):
     fig, axes = plt.subplots(1, len(metrics), figsize=(2.5*len(metrics), 6))
     plt.suptitle('Resource Metrics: Unoptimized vs Optimized', fontsize=13, y=0.98)
     
-    # Define colors for optimization state - more pleasant pastel colors
-    palette = {'Unoptimized': '#f8c1c1', 'Optimized': '#c1e1c1'}  # Lighter pastel red and green
+    # Define darker, more striking colors for optimization state
+    palette = {'Unoptimized': '#E74C3C', 'Optimized': '#27AE60'}  # Striking red and green
     
     # Plot each metric
     for i, metric in enumerate(metrics):
@@ -116,9 +116,9 @@ def plot_comparative_boxplots(unoptimized_csv, optimized_csv):
                 fontsize=11,  # Larger font
                 bbox=dict(facecolor='white', alpha=0.8, edgecolor='none', pad=3))
         
-        # Add mean lines with labels
-        ax.axhline(unopt_mean, 0.1, 0.3, color='#FF6666', linestyle='--', linewidth=1.5)
-        ax.axhline(opt_mean, 0.7, 0.9, color='#66CC66', linestyle='--', linewidth=1.5)
+        # Add mean lines with labels in darker, more visible colors
+        ax.axhline(unopt_mean, 0.1, 0.3, color='#B03A2E', linestyle='--', linewidth=1.5)
+        ax.axhline(opt_mean, 0.7, 0.9, color='#1E8449', linestyle='--', linewidth=1.5)
         
         # Set clean x-tick labels with larger font
         ax.set_xticklabels(['Unoptimized', 'Optimized'], fontsize=11)
@@ -145,8 +145,8 @@ def plot_comparative_boxplots(unoptimized_csv, optimized_csv):
     plt.show()
 
 # Update these paths with your actual CSV file paths
-unoptimized_csv_path = "../../backend/logs/resource_stats_raspberry_20250412_052446.csv"
-optimized_csv_path = "../../backend/logs/resource_stats_raspberry_20250412_053534.csv"
+unoptimized_csv_path = "../../backend/logs/resource_stats_raspberry_20250419_083203.csv"
+optimized_csv_path = "../../backend/logs/resource_stats_raspberry_20250419_082121.csv"
 
 # Call the function to generate the comparative boxplots
 plot_comparative_boxplots(unoptimized_csv_path, optimized_csv_path)
